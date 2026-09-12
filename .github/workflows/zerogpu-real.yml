@@ -1,0 +1,56 @@
+name: real ZeroGPU Wan validation
+
+on:
+  push:
+    branches: [foundation]
+    paths:
+      - ".github/workflows/zerogpu-real.yml"
+
+jobs:
+  wan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: foundation
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install -e '.[test,zerogpu]'
+
+      - name: Download public Space test media
+        run: |
+          mkdir -p /tmp/wan-test
+          curl -fL --retry 2 -o /tmp/wan-test/reference.mp4 "https://huggingface.co/spaces/alexnasa/Wan2.2-Animate-ZEROGPU/resolve/main/examples/paul.mp4?download=true"
+          curl -fL --retry 2 -o /tmp/wan-test/character.png "https://huggingface.co/spaces/alexnasa/Wan2.2-Animate-ZEROGPU/resolve/main/examples/man.png?download=true"
+          ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate -of default=noprint_wrappers=1 /tmp/wan-test/reference.mp4
+          file /tmp/wan-test/character.png
+
+      - name: Execute real Wan 2.2 Animate on ZeroGPU
+        env:
+          ZEROGPU_INTEGRATION_TEST: "true"
+          ZEROGPU_TEST_IMAGE: /tmp/wan-test/character.png
+          ZEROGPU_TEST_VIDEO: /tmp/wan-test/reference.mp4
+          ZEROGPU_DURATION_SECONDS: "2"
+          ZEROGPU_TIMEOUT_SECONDS: "1200"
+          ZEROGPU_SPACE: "alexnasa/Wan2.2-Animate-ZEROGPU"
+        run: |
+          pytest -q tests/test_zerogpu_integration.py --log-cli-level=INFO
+
+      - name: Validate generated MP4
+        run: |
+          test -f /tmp/pytest-of-runner/pytest-0/test_real_zerogpu_wan0/wan.mp4 || find /tmp -name wan.mp4 -print
+          OUTPUT=$(find /tmp -path "*/wan.mp4" -type f | head -n 1)
+          test -n "$OUTPUT"
+          test -s "$OUTPUT"
+          echo "Generated output: $OUTPUT"
+          ffprobe -v error -show_entries format=duration,size:stream=codec_name,width,height,nb_frames -of default=noprint_wrappers=1 "$OUTPUT"
+          cmp -s /tmp/wan-test/reference.mp4 "$OUTPUT" && { echo "ERROR: output is byte-identical to input"; exit 1; } || true
+          sha256sum /tmp/wan-test/reference.mp4 "$OUTPUT"
