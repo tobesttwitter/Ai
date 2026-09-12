@@ -1,8 +1,6 @@
 import asyncio
 import inspect
-import io
 import json
-import subprocess
 
 import pytest
 
@@ -37,7 +35,7 @@ class FakeRequestCapture:
         return self.response
 
 
-def test_zerogpu_client_construction_uses_declared_gradio_client_api(monkeypatch):
+def test_zerogpu_client_construction_uses_declared_gradio_client_api():
     from gradio_client import Client
 
     signature = inspect.signature(Client.__init__)
@@ -65,7 +63,6 @@ def test_upload_flow_returns_gradio_filedata(monkeypatch, tmp_path):
     assert result == {
         "path": "/tmp/character.png",
         "orig_name": "character.png",
-        "mime_type": "image/png",
         "meta": {"_type": "gradio.FileData"},
     }
     request, _ = capture.requests[0]
@@ -80,8 +77,8 @@ def test_generation_payload_is_exactly_five_fields(monkeypatch):
     provider = ZeroGPUWanProvider(mode="Character Swap", resolution="Low Res")
 
     event_id = provider._post_generation(
-        {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "mime_type": "video/mp4", "meta": {"_type": "gradio.FileData"}},
-        {"path": "/tmp/image.png", "orig_name": "image.png", "mime_type": "image/png", "meta": {"_type": "gradio.FileData"}},
+        {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
+        {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
     )
 
     assert event_id == "evt-123"
@@ -91,9 +88,9 @@ def test_generation_payload_is_exactly_five_fields(monkeypatch):
     assert list(payload) == ["data"]
     assert len(payload["data"]) == 5
     assert payload["data"] == [
-        {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "mime_type": "video/mp4", "meta": {"_type": "gradio.FileData"}},
+        {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
         2,
-        {"path": "/tmp/image.png", "orig_name": "image.png", "mime_type": "image/png", "meta": {"_type": "gradio.FileData"}},
+        {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
         "Character Swap",
         "Low Res",
     ]
@@ -177,12 +174,12 @@ def test_malformed_sse_is_rejected(monkeypatch):
 
 def test_upstream_error_event_is_rejected_and_redacted(monkeypatch):
     provider = ZeroGPUWanProvider(hf_token="hf-secret")
-    capture = FakeRequestCapture(FakeHTTPResponse(b"event: error\ndata: token=hf-secret; CUDA failure\n\n"))
+    capture = FakeRequestCapture(FakeHTTPResponse(b"event: error\ndata: token=hf-secret; upstream failure\n\n"))
     monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", capture)
     with pytest.raises(ZeroGPUError) as exc_info:
         provider._stream_result("evt")
     message = str(exc_info.value)
-    assert "CUDA failure" in message
+    assert "upstream failure" in message
     assert "hf-secret" not in message
     assert "[REDACTED]" in message
 
@@ -205,7 +202,7 @@ def test_missing_output_url_is_rejected(tmp_path):
 
 def test_ffprobe_validation_rejects_zero_duration(monkeypatch, tmp_path):
     video = tmp_path / "result.mp4"
-    video.write_bytes(b"not-real")
+    video.write_bytes(b"not-real" * 200)
 
     class Result:
         stdout = '{"streams":[{"nb_frames":"0"}],"format":{"duration":"0"}}'
@@ -217,7 +214,7 @@ def test_ffprobe_validation_rejects_zero_duration(monkeypatch, tmp_path):
 
 def test_ffprobe_validation_rejects_zero_frames(monkeypatch, tmp_path):
     video = tmp_path / "result.mp4"
-    video.write_bytes(b"not-real")
+    video.write_bytes(b"not-real" * 200)
 
     class Result:
         stdout = '{"streams":[{"nb_frames":"0"}],"format":{"duration":"2"}}'
@@ -241,6 +238,13 @@ def test_byte_identical_output_is_rejected(monkeypatch, tmp_path):
     monkeypatch.setattr(provider, "_validate_video", lambda path: {"streams": [{"nb_frames": "1"}], "format": {"duration": "2"}})
     with pytest.raises(ZeroGPUError, match="byte-identical"):
         asyncio.run(provider.generate(image, video, output))
+
+
+def test_suspiciously_small_output_is_rejected(tmp_path):
+    video = tmp_path / "small.mp4"
+    video.write_bytes(b"x" * 1000)
+    with pytest.raises(ZeroGPUError, match="suspiciously small"):
+        ZeroGPUWanProvider()._validate_video(video)
 
 
 def test_duration_validation():
