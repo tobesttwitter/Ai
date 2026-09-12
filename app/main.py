@@ -15,7 +15,7 @@ storage=Storage(settings.storage_root)
 if settings.mock_generation:
     motion=MockMotionProvider(settings.mock_delay_seconds)
 elif settings.motion_provider == "zerogpu":
-    motion=ZeroGPUWanProvider(settings.zerogpu_space,settings.zerogpu_duration_seconds,timeout_seconds=settings.zerogpu_timeout_seconds,hf_token=settings.hf_token)
+    motion=ZeroGPUWanProvider(settings.zerogpu_space,settings.zerogpu_duration_seconds,mode=settings.zerogpu_mode,resolution=settings.zerogpu_resolution,timeout_seconds=settings.zerogpu_timeout_seconds,hf_token=settings.hf_token)
 else:
     if not settings.comfyui_url:
         raise RuntimeError("MOCK_GENERATION=false requires COMFYUI_URL unless MOTION_PROVIDER=zerogpu")
