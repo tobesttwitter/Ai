@@ -9,6 +9,7 @@ from app.zerogpu import ZeroGPUError, ZeroGPUWanProvider
 class FakeHTTPResponse:
     def __init__(self, payload=b"", status=200):
         self.payload = payload
+        self._read_offset = 0
         self.status = status
 
     def __enter__(self):
@@ -17,8 +18,17 @@ class FakeHTTPResponse:
     def __exit__(self, *args):
         return False
 
-    def read(self, *args):
-        return self.payload
+    def read(self, size=-1):
+        if self._read_offset >= len(self.payload):
+            return b""
+        if size is None or size < 0:
+            chunk = self.payload[self._read_offset:]
+            self._read_offset = len(self.payload)
+            return chunk
+        end = min(self._read_offset + size, len(self.payload))
+        chunk = self.payload[self._read_offset:end]
+        self._read_offset = end
+        return chunk
 
     def __iter__(self):
         return iter(self.payload.splitlines(keepends=True))
