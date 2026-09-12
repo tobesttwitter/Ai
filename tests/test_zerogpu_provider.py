@@ -1,5 +1,4 @@
 import asyncio
-from pathlib import Path
 
 from app.zerogpu import ZeroGPUWanProvider
 
@@ -32,21 +31,25 @@ def test_zerogpu_provider_copies_returned_mp4(tmp_path, monkeypatch):
     remote.write_bytes(b"fake-mp4")
 
     provider = ZeroGPUWanProvider(duration_seconds=2)
-
     fake_client = FakeClient([str(remote)])
-
     monkeypatch.setattr(provider, "_client", lambda: fake_client)
 
     asyncio.run(provider.generate(image, video, output))
 
     assert output.read_bytes() == b"fake-mp4"
     args, kwargs = fake_client.calls[0]
-    assert args[0] == str(video)
-    assert args[1] == 2
-    assert args[2] == str(image)
-    assert args[3] == "Video → Ref Image"
-    assert args[4] is None and args[5] is None
+    assert args == (str(video), 2, str(image), "Video → Ref Image")
     assert kwargs["api_name"] == "/animate_scene"
+
+
+def test_zerogpu_provider_accepts_current_space_duration_limit():
+    assert ZeroGPUWanProvider(duration_seconds=4)
+    try:
+        ZeroGPUWanProvider(duration_seconds=5)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("current public Space accepts at most 4 seconds")
 
 
 def test_zerogpu_provider_validates_inputs(tmp_path):
