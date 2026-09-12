@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import tempfile
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -51,7 +54,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             return Client(self.space, **kwargs)
         except Exception as exc:
             raise ZeroGPUError(
-                f"ZeroGPU Space unavailable: {self.space}: {exc}"
+                f"ZeroGPU Space unavailable: {self.space}: {self._safe_exception_message(exc)}"
             ) from exc
 
     async def generate(self, image: Path, reference_video: Path, output: Path):
@@ -62,23 +65,38 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
 
         import asyncio
 
-        result = await asyncio.to_thread(self._generate_sync, image, reference_video)
-        source = self._extract_video_result(result)
+        with tempfile.TemporaryDirectory(prefix="zerogpu-") as download_dir:
+            result = await asyncio.to_thread(
+                self._generate_sync, image, reference_video
+            )
+            source = self._extract_video_result(result, Path(download_dir))
 
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(source.read_bytes())
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_bytes(source.read_bytes())
+
         if output.stat().st_size == 0:
             raise ZeroGPUError("ZeroGPU returned an empty video")
         return output
 
-    @staticmethod
-    def _extract_video_result(result: Any) -> Path:
+    @classmethod
+    def _extract_video_result(cls, result: Any, download_dir: Path | None = None) -> Path:
         values = result if isinstance(result, (list, tuple)) else (result,)
         for value in values:
             if value is None:
                 continue
             if isinstance(value, dict):
                 value = value.get("path") or value.get("url")
+
+            if isinstance(value, str) and urllib.parse.urlparse(value).scheme in {
+                "http",
+                "https",
+            }:
+                if download_dir is None:
+                    raise ZeroGPUError(
+                        "ZeroGPU returned a remote video URL without a download directory"
+                    )
+                return cls._download_video_url(value, download_dir)
+
             candidate = Path(str(value))
             if candidate.is_file() and candidate.suffix.lower() in {
                 ".mp4",
@@ -87,6 +105,30 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             }:
                 return candidate
         raise ZeroGPUError("ZeroGPU returned no accessible video output")
+
+    @staticmethod
+    def _download_video_url(url: str, download_dir: Path) -> Path:
+        parsed = urllib.parse.urlparse(url)
+        suffix = Path(parsed.path).suffix.lower()
+        if suffix not in {".mp4", ".webm", ".mov"}:
+            raise ZeroGPUError("ZeroGPU returned a remote URL without a supported video extension")
+        download_dir.mkdir(parents=True, exist_ok=True)
+        target = download_dir / f"result{suffix}"
+        try:
+            urllib.request.urlretrieve(url, target)
+        except Exception as exc:
+            raise ZeroGPUError(
+                f"ZeroGPU video download failed: exception_type={type(exc).__name__}; detail={exc}"
+            ) from exc
+        if not target.is_file() or target.stat().st_size == 0:
+            raise ZeroGPUError("ZeroGPU remote video URL produced an empty result")
+        return target
+
+    def _safe_exception_message(self, exc: Exception) -> str:
+        message = str(exc)
+        if self.hf_token:
+            message = message.replace(self.hf_token, "[REDACTED]")
+        return message
 
     def _generate_sync(self, image: Path, reference_video: Path):
         try:
@@ -109,5 +151,10 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             return job.result(timeout=self.timeout_seconds)
         except Exception as exc:
             raise ZeroGPUError(
-                f"ZeroGPU Wan Animate failed: {exc}"
+                "ZeroGPU Wan Animate failed: "
+                f"exception_type={type(exc).__name__}; "
+                "endpoint=/animate_scene; "
+                f"duration_seconds={self.duration_seconds}; "
+                f"mode={self.mode}; "
+                f"detail={self._safe_exception_message(exc)}"
             ) from exc
