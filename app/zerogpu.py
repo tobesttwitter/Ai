@@ -100,7 +100,6 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         return {
             "path": uploaded,
             "orig_name": filename,
-            "mime_type": content_type,
             "meta": {"_type": "gradio.FileData"},
         }
 
@@ -234,6 +233,8 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
     def _validate_video(self, path: Path) -> dict[str, Any]:
         if not path.is_file() or path.stat().st_size == 0:
             raise ZeroGPUError("ZeroGPU returned a missing or empty video")
+        if path.stat().st_size <= 1000:
+            raise ZeroGPUError("ZeroGPU returned a suspiciously small video")
         try:
             result = subprocess.run(
                 [
