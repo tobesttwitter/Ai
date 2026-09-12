@@ -11,11 +11,7 @@ class ZeroGPUError(RuntimeError):
 
 
 class ZeroGPUWanProvider(MotionGenerationProvider):
-    """Thin adapter for a Wan 2.2 Animate ZeroGPU Gradio Space.
-
-    The worker remains provider-independent: this class only translates local
-    files into a Gradio call and copies the returned MP4 into job storage.
-    """
+    """Thin adapter for the public Wan 2.2 Animate ZeroGPU Gradio Space."""
 
     name = "zerogpu-wan2.2-animate"
 
@@ -61,17 +57,10 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         if not reference_video.is_file():
             raise ZeroGPUError(f"reference video not found: {reference_video}")
 
-        # gradio_client is synchronous. Run it in a worker thread so the
-        # application's asynchronous job manager never blocks its event loop.
         import asyncio
 
         result = await asyncio.to_thread(self._generate_sync, image, reference_video)
-        if not result:
-            raise ZeroGPUError("ZeroGPU returned no output")
-
-        source = Path(result[0] if isinstance(result, (list, tuple)) else result)
-        if not source.is_file():
-            raise ZeroGPUError(f"ZeroGPU returned an inaccessible output: {source}")
+        source = self._extract_video_result(result)
 
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_bytes(source.read_bytes())
@@ -79,16 +68,27 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             raise ZeroGPUError("ZeroGPU returned an empty video")
         return output
 
+    @staticmethod
+    def _extract_video_result(result: Any) -> Path:
+        values = result if isinstance(result, (list, tuple)) else (result,)
+        for value in values:
+            if value is None:
+                continue
+            candidate = Path(str(value))
+            if candidate.is_file() and candidate.suffix.lower() in {".mp4", ".webm", ".mov"}:
+                return candidate
+        raise ZeroGPUError("ZeroGPU returned no accessible video output")
+
     def _generate_sync(self, image: Path, reference_video: Path):
         client = self._client()
         try:
+            # Current public Space API: video, duration, reference image, mode.
+            # Internal Gradio state is not supplied by external API callers.
             job = client.submit(
                 str(reference_video),
                 self.duration_seconds,
                 str(image),
                 self.mode,
-                None,
-                None,
                 api_name="/animate_scene",
             )
             return job.result(timeout=self.timeout_seconds)
