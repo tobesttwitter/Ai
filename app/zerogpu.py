@@ -23,8 +23,8 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         timeout_seconds: float = 900,
         hf_token: str | None = None,
     ):
-        if duration_seconds < 2 or duration_seconds > 10:
-            raise ValueError("ZeroGPU duration must be between 2 and 10 seconds")
+        if duration_seconds < 2 or duration_seconds > 4:
+            raise ValueError("ZeroGPU duration must be between 2 and 4 seconds for the current public Space")
         if mode not in {"Video → Ref Image", "Video ← Ref Image"}:
             raise ValueError("unsupported ZeroGPU Wan Animate mode")
         self.space = space
@@ -82,8 +82,9 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
     def _generate_sync(self, image: Path, reference_video: Path):
         client = self._client()
         try:
-            # Current public Space API: video, duration, reference image, mode.
-            # Internal Gradio state is not supplied by external API callers.
+            # Current public Space API exposes four public inputs:
+            # video, max duration, reference image, and replacement mode.
+            # Session state is internal and must not be passed by API clients.
             job = client.submit(
                 str(reference_video),
                 self.duration_seconds,
