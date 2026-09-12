@@ -1,14 +1,18 @@
-name: Real Wan ZeroGPU test
+name: Real Wan ZeroGPU Test
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   wan-real-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout foundation
+        uses: actions/checkout@v4
         with:
           ref: foundation
 
@@ -17,8 +21,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Install project
-        run: python -m pip install --upgrade pip && pip install -e '.[zerogpu]'
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[zerogpu]'
 
       - name: Run real 2-second Wan test
         env:
