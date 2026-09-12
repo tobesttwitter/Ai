@@ -1,0 +1,37 @@
+name: Real Wan ZeroGPU test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  wan-real-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: foundation
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install project
+        run: python -m pip install --upgrade pip && pip install -e '.[zerogpu]'
+
+      - name: Run real 2-second Wan test
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ZEROGPU_SPACE: alexnasa/Wan2.2-Animate-ZEROGPU
+          ZEROGPU_DURATION_SECONDS: "2"
+          ZEROGPU_TIMEOUT_SECONDS: "900"
+        run: python scripts/run_real_wan_test.py
+
+      - name: Upload real Wan output
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-wan-zerogpu-output
+          path: artifacts/wan-real-test.mp4
+          if-no-files-found: error
