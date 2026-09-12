@@ -19,6 +19,6 @@ This repository deliberately does not label that stack **validated by AI** until
 
 The official Wan Animate 14B checkpoint's memory footprint is too large for a single 16 GB T4. The community Kaggle implementation specifically uses a quantized Q3_K_M Animate checkpoint and reports T4x2 operation. That is a compatibility experiment, not a claim that the official FP8/BF16 checkpoint fits in one T4.
 
-The official Wan Animate model card describes animation mode as generating a video of the reference character image that mimics motion from the input video. urlWan2.2 Animate model cardhttps://huggingface.co/Wan-AI/Wan2.2-Animate-14B
+The official Wan Animate model card describes animation mode as generating a video of the reference character image that mimics motion from the input video. https://huggingface.co/Wan-AI/Wan2.2-Animate-14B
 
-The model card currently lists the preprocessing checkpoint at about 4.17 GB and the SAM2 subdirectory at about 1.56 GB. urlWan2.2 Animate process checkpointshttps://huggingface.co/Wan-AI/Wan2.2-Animate-14B/tree/main/process_checkpoint
+The model card currently lists the preprocessing checkpoint at about 4.17 GB and the SAM2 subdirectory at about 1.56 GB. https://huggingface.co/Wan-AI/Wan2.2-Animate-14B/tree/main/process_checkpoint
