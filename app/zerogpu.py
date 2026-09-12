@@ -24,7 +24,9 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         hf_token: str | None = None,
     ):
         if duration_seconds < 2 or duration_seconds > 4:
-            raise ValueError("ZeroGPU duration must be between 2 and 4 seconds for the current public Space")
+            raise ValueError(
+                "ZeroGPU duration must be between 2 and 4 seconds for the current public Space"
+            )
         if mode not in {"Video → Ref Image", "Video ← Ref Image"}:
             raise ValueError("unsupported ZeroGPU Wan Animate mode")
         self.space = space
@@ -43,7 +45,8 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
 
         kwargs: dict[str, Any] = {}
         if self.hf_token:
-            kwargs["hf_token"] = self.hf_token
+            # Current gradio_client releases use "token" for HF authentication.
+            kwargs["token"] = self.hf_token
         try:
             return Client(self.space, **kwargs)
         except Exception as exc:
@@ -74,21 +77,32 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         for value in values:
             if value is None:
                 continue
+            if isinstance(value, dict):
+                value = value.get("path") or value.get("url")
             candidate = Path(str(value))
-            if candidate.is_file() and candidate.suffix.lower() in {".mp4", ".webm", ".mov"}:
+            if candidate.is_file() and candidate.suffix.lower() in {
+                ".mp4",
+                ".webm",
+                ".mov",
+            }:
                 return candidate
         raise ZeroGPUError("ZeroGPU returned no accessible video output")
 
     def _generate_sync(self, image: Path, reference_video: Path):
+        try:
+            from gradio_client import handle_file
+        except ImportError as exc:
+            raise ZeroGPUError(
+                "ZeroGPU provider requires gradio_client; install the zerogpu extra"
+            ) from exc
+
         client = self._client()
         try:
-            # Current public Space API exposes four public inputs:
-            # video, max duration, reference image, and replacement mode.
-            # Session state is internal and must not be passed by API clients.
+            # Current public Space API: video, duration, reference image, mode.
             job = client.submit(
-                str(reference_video),
+                handle_file(str(reference_video)),
                 self.duration_seconds,
-                str(image),
+                handle_file(str(image)),
                 self.mode,
                 api_name="/animate_scene",
             )
