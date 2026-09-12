@@ -28,17 +28,12 @@ def download(url: str, path: Path) -> None:
 def probe(path: Path) -> dict:
     result = subprocess.run(
         [
-            "ffprobe",
-            "-v", "error",
-            "-select_streams", "v:0",
+            "ffprobe", "-v", "error", "-select_streams", "v:0",
             "-show_entries",
             "format=format_name,duration,size:stream=codec_name,width,height,nb_frames",
-            "-of", "json",
-            str(path),
+            "-of", "json", str(path),
         ],
-        check=True,
-        capture_output=True,
-        text=True,
+        check=True, capture_output=True, text=True,
     )
     data = json.loads(result.stdout)
     streams = data.get("streams", [])
@@ -56,9 +51,12 @@ def probe(path: Path) -> dict:
 
 def main() -> None:
     hf_token = os.getenv("HF_TOKEN")
+    mode = os.getenv("ZEROGPU_MODE", "Character Swap")
+    resolution = os.getenv("ZEROGPU_RESOLUTION", "Low Res")
     print(f"Space: {SPACE}")
     print("API: /animate_scene")
-    print("Mode: Video → Ref Image")
+    print(f"Mode: {mode}")
+    print(f"Resolution: {resolution}")
     print("Duration: 2 seconds")
     print(f"HF_TOKEN present: {bool(hf_token)}")
     print("Downloading public Space examples...")
@@ -69,7 +67,8 @@ def main() -> None:
     provider = ZeroGPUWanProvider(
         space=SPACE,
         duration_seconds=2,
-        mode="Video → Ref Image",
+        mode=mode,
+        resolution=resolution,
         timeout_seconds=float(os.getenv("ZEROGPU_TIMEOUT_SECONDS", "900")),
         hf_token=hf_token,
     )
@@ -84,15 +83,12 @@ def main() -> None:
         raise RuntimeError(
             f"unexpected output duration {output_duration:.3f}s for a 2-second test"
         )
-
     if OUTPUT.read_bytes() == VIDEO.read_bytes():
         raise RuntimeError(
             "returned video is byte-identical to the reference input; refusing to call it a generated result"
         )
-
     if OUTPUT.stat().st_size <= 1000:
         raise RuntimeError("suspiciously small output; refusing to call it a real result")
-
     print(f"REAL WAN OUTPUT: {OUTPUT}")
 
 
