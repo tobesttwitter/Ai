@@ -87,6 +87,8 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
                 self.duration_seconds,
                 str(image),
                 self.mode,
+                None,
+                None,
                 api_name="/animate_scene",
             )
             return job.result(timeout=self.timeout_seconds)
