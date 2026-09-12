@@ -7,6 +7,12 @@ from app.wan import ComfyUIWanAnimateProvider
 
 
 class Client:
+    @staticmethod
+    def input_reference(upload_result):
+        name = upload_result["name"]
+        subfolder = upload_result.get("subfolder") or ""
+        return f"{subfolder}/{name}" if subfolder else name
+
     async def upload_media(self, path):
         return {"name": path.name, "subfolder": "ai-movie"}
 
