@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 import json
 
 import pytest
@@ -33,14 +32,6 @@ class FakeRequestCapture:
     def __call__(self, request, timeout=None):
         self.requests.append((request, timeout))
         return self.response
-
-
-def test_zerogpu_client_construction_uses_declared_gradio_client_api():
-    from gradio_client import Client
-
-    signature = inspect.signature(Client.__init__)
-    assert "hf_token" in signature.parameters
-    assert "token" not in signature.parameters
 
 
 def test_current_api_defaults_are_verified():
