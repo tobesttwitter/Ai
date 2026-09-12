@@ -67,3 +67,9 @@ Uploads are restricted by extension, magic bytes and configurable size; filename
 ## Roadmap
 
 Foundation, mobile UI/API and playable mock are complete. Remote ComfyUI client/health is complete; production workflow is pending. Wan inference, MuseTalk inference, production FFmpeg assembly, durable worker/queue and free-GPU deployment remain pending. Projects, scenes, characters, voices, timeline and long-form assembly come later.
+
+## Real Wan execution
+
+The repository now includes `ComfyUIWanAnimateProvider` and a current official Wan 2.2 Animate UI workflow template. Set `MOCK_GENERATION=false` with a remote `COMFYUI_URL` to use the provider. The provider intentionally requires an API-format workflow exported from the exact ComfyUI installation; see `workflows/comfyui/README.md`. The UI template is not falsely treated as API JSON.
+
+Real Wan inference has **not** been validated in this development environment because no reachable GPU/ComfyUI worker is available. The provider is designed to fail clearly rather than silently fall back to mock output.
