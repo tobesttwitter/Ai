@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import os
 import subprocess
 import urllib.request
@@ -23,14 +25,14 @@ def download(url: str, path: Path) -> None:
         raise RuntimeError(f"download failed or empty: {url}")
 
 
-def probe(path: Path) -> None:
+def probe(path: Path) -> dict:
     result = subprocess.run(
         [
             "ffprobe",
             "-v", "error",
             "-select_streams", "v:0",
-            "-show_entries", "format=format_name,duration,size",
-            "-show_entries", "stream=codec_name,width,height,nb_frames",
+            "-show_entries",
+            "format=format_name,duration,size:stream=codec_name,width,height,nb_frames",
             "-of", "json",
             str(path),
         ],
@@ -38,11 +40,23 @@ def probe(path: Path) -> None:
         capture_output=True,
         text=True,
     )
-    print(result.stdout)
+    data = json.loads(result.stdout)
+    streams = data.get("streams", [])
+    if not streams:
+        raise RuntimeError(f"ffprobe found no video stream in {path}")
+    duration = float(data.get("format", {}).get("duration") or 0)
+    if duration <= 0:
+        raise RuntimeError(f"video has no positive duration: {path}")
+    frames = streams[0].get("nb_frames")
+    if frames is not None and int(frames) <= 0:
+        raise RuntimeError(f"video has no frames: {path}")
+    print(f"{path}: {json.dumps(data, sort_keys=True)}")
+    return data
 
 
 def main() -> None:
     print(f"Space: {SPACE}")
+    print("API: /animate_scene")
     print("Mode: Video → Ref Image")
     print("Duration: 2 seconds")
     print("Downloading public Space examples...")
@@ -57,15 +71,25 @@ def main() -> None:
         timeout_seconds=float(os.getenv("ZEROGPU_TIMEOUT_SECONDS", "900")),
         hf_token=os.getenv("HF_TOKEN"),
     )
-    import asyncio
     asyncio.run(provider.generate(IMAGE, VIDEO, OUTPUT))
 
     if not OUTPUT.is_file() or OUTPUT.stat().st_size == 0:
         raise RuntimeError("Wan returned no output")
-    probe(OUTPUT)
+
+    output_probe = probe(OUTPUT)
+    output_duration = float(output_probe.get("format", {}).get("duration") or 0)
+    if not 1.0 <= output_duration <= 4.5:
+        raise RuntimeError(
+            f"unexpected output duration {output_duration:.3f}s for a 2-second test"
+        )
+
+    if OUTPUT.read_bytes() == VIDEO.read_bytes():
+        raise RuntimeError(
+            "returned video is byte-identical to the reference input; refusing to call it a generated result"
+        )
 
     if OUTPUT.stat().st_size <= 1000:
-        raise RuntimeError("Suspiciously small output; refusing to call it a real result")
+        raise RuntimeError("suspiciously small output; refusing to call it a real result")
 
     print(f"REAL WAN OUTPUT: {OUTPUT}")
 
