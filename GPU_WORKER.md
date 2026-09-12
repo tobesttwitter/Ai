@@ -4,6 +4,16 @@ The application does not require a local GPU. Set MOCK_GENERATION=true for devel
 
 No paid provider is required by this repository.
 
+## $0 worker selection
+
+**Selected candidate: Kaggle Notebooks with T4x2.** Kaggle's current product announcement says T4x2 remains available, with two 16 GB GPUs. Kaggle's current GPU guidance says free GPU usage is quota-limited (normally about 30 hours/week, sometimes higher depending on demand) and sessions are time-limited. urlKaggle T4x2 announcementturn0search6 urlKaggle GPU guidanceturn0search1
+
+This is a temporary worker, not a permanent server. Kaggle does not provide a normal public inbound port for notebooks, so the included notebook uses a temporary Cloudflare Quick Tunnel for remote API access. This is a convenience for testing, not a production security boundary. A real deployment needs worker authentication.
+
+I also checked the current alternatives. Free Colab does not provide a guaranteed always-on GPU; Kaggle is the more reproducible choice because its free accelerator policy is explicit. Kaggle's current public documentation confirms T4x2 and its quota/session model. urlKaggle GPU documentationturn0search5
+
+**Important:** this coding environment has no NVIDIA GPU (`nvidia-smi` is unavailable and installed PyTorch is CPU-only), and it has no access to the user's Kaggle account/session. Therefore a real Wan run cannot honestly be executed from this session. The repository now contains the worker setup needed to perform that validation in a user's $0 Kaggle GPU session.
+
 ## Worker checklist
 
 - Current ComfyUI installed.
