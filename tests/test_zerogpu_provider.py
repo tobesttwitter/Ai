@@ -45,6 +45,7 @@ def test_zerogpu_provider_copies_returned_mp4(tmp_path, monkeypatch):
     assert args[1] == 2
     assert args[2] == str(image)
     assert args[3] == "Video → Ref Image"
+    assert args[4] is None and args[5] is None
     assert kwargs["api_name"] == "/animate_scene"
 
 
