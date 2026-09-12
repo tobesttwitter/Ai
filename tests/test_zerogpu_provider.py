@@ -72,7 +72,7 @@ def test_upload_flow_returns_gradio_filedata(monkeypatch, tmp_path):
     assert b'filename="character.png"' in request.data
 
 
-def test_generation_payload_is_exactly_five_fields(monkeypatch):
+def test_generation_payload_matches_live_openapi(monkeypatch):
     capture = FakeRequestCapture(FakeHTTPResponse(b'{"event_id":"evt-123"}'))
     monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", capture)
     provider = ZeroGPUWanProvider(mode="Character Swap", resolution="Low Res")
@@ -86,15 +86,13 @@ def test_generation_payload_is_exactly_five_fields(monkeypatch):
     request, _ = capture.requests[0]
     assert request.full_url.endswith("/gradio_api/call/v2/animate_scene")
     payload = json.loads(request.data)
-    assert list(payload) == ["data"]
-    assert len(payload["data"]) == 5
-    assert payload["data"] == [
-        {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
-        2,
-        {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
-        "Character Swap",
-        "Low Res",
-    ]
+    assert payload == {
+        "input_video": {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
+        "max_duration_s": 2,
+        "edited_frame": {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
+        "rc_str": "Character Swap",
+        "resolution_choice": "Low Res",
+    }
 
 
 def test_sse_complete_event_is_parsed(monkeypatch):
