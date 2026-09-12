@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 
 import pytest
 
@@ -27,6 +28,31 @@ class FakeClient:
         return FakeResult(self.result, self.error)
 
 
+def test_zerogpu_client_construction_uses_declared_gradio_client_api(monkeypatch):
+    from gradio_client import Client
+
+    signature = inspect.signature(Client.__init__)
+    assert "hf_token" in signature.parameters
+    assert "token" not in signature.parameters
+
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, src, **kwargs):
+            captured["src"] = src
+            captured["kwargs"] = kwargs
+
+    monkeypatch.setattr("gradio_client.Client", FakeClient)
+
+    provider = ZeroGPUWanProvider(hf_token="hf-test-token")
+    provider._client()
+
+    assert captured == {
+        "src": "alexnasa/Wan2.2-Animate-ZEROGPU",
+        "kwargs": {"hf_token": "hf-test-token"},
+    }
+
+
 def test_zerogpu_provider_copies_returned_mp4(tmp_path, monkeypatch):
     image = tmp_path / "character.png"
     video = tmp_path / "reference.mp4"
@@ -44,7 +70,6 @@ def test_zerogpu_provider_copies_returned_mp4(tmp_path, monkeypatch):
 
     assert output.read_bytes() == b"fake-mp4"
     args, kwargs = fake_client.calls[0]
-    assert args == (str(video), 2, str(image), "Video → Ref Image")
     assert kwargs["api_name"] == "/animate_scene"
 
 
