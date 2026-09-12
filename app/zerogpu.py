@@ -48,8 +48,8 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
 
         kwargs: dict[str, Any] = {}
         if self.hf_token:
-            # Current gradio_client releases use "token" for HF authentication.
-            kwargs["token"] = self.hf_token
+            # gradio_client 1.x names the Hugging Face credential hf_token.
+            kwargs["hf_token"] = self.hf_token
         try:
             return Client(self.space, **kwargs)
         except Exception as exc:
