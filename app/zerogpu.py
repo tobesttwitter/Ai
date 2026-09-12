@@ -35,9 +35,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         ffprobe_binary: str = "ffprobe",
     ):
         if duration_seconds < 2 or duration_seconds > 4:
-            raise ValueError(
-                "ZeroGPU duration must be between 2 and 4 seconds for the current public Space"
-            )
+            raise ValueError("ZeroGPU duration must be between 2 and 4 seconds for the current public Space")
         if mode not in self.VALID_MODES:
             raise ValueError(f"unsupported ZeroGPU Wan Animate mode: {mode}")
         if resolution not in self.VALID_RESOLUTIONS:
@@ -74,7 +72,6 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             f'Content-Disposition: form-data; name="files"; filename="{filename}"\r\n'
             f"Content-Type: {content_type}\r\n\r\n"
         ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
-
         request = urllib.request.Request(
             f"{self._base_url}/gradio_api/upload",
             data=body,
@@ -90,28 +87,22 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
                 f"exception_type={type(exc).__name__}; endpoint=/gradio_api/upload; "
                 f"detail={self._safe_exception_message(exc)}"
             ) from exc
-
         if not isinstance(payload, list) or not payload:
             raise ZeroGPUError("ZeroGPU file upload returned no file path")
         uploaded = payload[0]
         if not isinstance(uploaded, str) or not uploaded:
             raise ZeroGPUError("ZeroGPU file upload returned an invalid file path")
-
-        return {
-            "path": uploaded,
-            "orig_name": filename,
-            "meta": {"_type": "gradio.FileData"},
-        }
+        return {"path": uploaded, "orig_name": filename, "meta": {"_type": "gradio.FileData"}}
 
     def _post_generation(self, video_file: dict[str, Any], image_file: dict[str, Any]) -> str:
+        # The live Gradio 6.14 OpenAPI schema exposes named request properties,
+        # not the legacy {"data": [...]} wrapper used by older clients.
         payload = {
-            "data": [
-                video_file,
-                self.duration_seconds,
-                image_file,
-                self.mode,
-                self.resolution,
-            ]
+            "input_video": video_file,
+            "max_duration_s": self.duration_seconds,
+            "edited_frame": image_file,
+            "rc_str": self.mode,
+            "resolution_choice": self.resolution,
         }
         request = urllib.request.Request(
             f"{self._base_url}/gradio_api/call/v2/animate_scene",
@@ -126,10 +117,9 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             raise ZeroGPUError(
                 "ZeroGPU Wan Animate submission failed: "
                 f"exception_type={type(exc).__name__}; endpoint=/gradio_api/call/v2/animate_scene; "
-                f"duration_seconds={self.duration_seconds}; mode={self.mode}; "
-                f"resolution={self.resolution}; detail={self._safe_exception_message(exc)}"
+                f"duration_seconds={self.duration_seconds}; mode={self.mode}; resolution={self.resolution}; "
+                f"detail={self._safe_exception_message(exc)}"
             ) from exc
-
         event_id = result.get("event_id") if isinstance(result, dict) else None
         if not event_id or not isinstance(event_id, str):
             raise ZeroGPUError("ZeroGPU generation response missing event_id")
@@ -152,32 +142,22 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
                         if event_name is not None:
                             data = "\n".join(data_lines)
                             if event_name == "error":
-                                raise ZeroGPUError(
-                                    "ZeroGPU upstream error event: "
-                                    f"{self._safe_exception_message_from_text(data)}"
-                                )
+                                raise ZeroGPUError("ZeroGPU upstream error event: " + self._safe_exception_message_from_text(data))
                             if event_name == "complete":
                                 try:
                                     parsed = json.loads(data)
                                 except json.JSONDecodeError as exc:
-                                    raise ZeroGPUError(
-                                        "ZeroGPU malformed complete event: "
-                                        f"{self._safe_exception_message_from_text(data)}"
-                                    ) from exc
+                                    raise ZeroGPUError("ZeroGPU malformed complete event: " + self._safe_exception_message_from_text(data)) from exc
                                 if not isinstance(parsed, list):
-                                    raise ZeroGPUError(
-                                        "ZeroGPU complete event data is not an output array"
-                                    )
+                                    raise ZeroGPUError("ZeroGPU complete event data is not an output array")
                                 return parsed
                         event_name = None
                         data_lines = []
                         continue
-
                     if line.startswith("event:"):
                         event_name = line.split(":", 1)[1].strip()
                     elif line.startswith("data:"):
                         data_lines.append(line.split(":", 1)[1].lstrip())
-
                 raise ZeroGPUError("ZeroGPU SSE stream ended without a complete event")
         except ZeroGPUError:
             raise
@@ -199,9 +179,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             orig_name = str(value.get("orig_name") or "")
             path = value.get("path")
             url = value.get("url")
-            suffix = Path(urllib.parse.urlparse(str(url or "")).path).suffix.lower()
-            if not suffix:
-                suffix = Path(orig_name).suffix.lower()
+            suffix = Path(urllib.parse.urlparse(str(url or "")).path).suffix.lower() or Path(orig_name).suffix.lower()
             if not (mime_type.startswith("video/") or suffix in {".mp4", ".webm", ".mov"}):
                 continue
             if isinstance(url, str) and url.startswith(("http://", "https://")):
@@ -237,19 +215,10 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             raise ZeroGPUError("ZeroGPU returned a suspiciously small video")
         try:
             result = subprocess.run(
-                [
-                    self.ffprobe_binary,
-                    "-v", "error",
-                    "-select_streams", "v:0",
-                    "-show_entries",
-                    "format=format_name,duration,size:stream=codec_name,nb_frames",
-                    "-of", "json",
-                    str(path),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=30,
+                [self.ffprobe_binary, "-v", "error", "-select_streams", "v:0",
+                 "-show_entries", "format=format_name,duration,size:stream=codec_name,nb_frames",
+                 "-of", "json", str(path)],
+                check=True, capture_output=True, text=True, timeout=30,
             )
             data = json.loads(result.stdout)
         except Exception as exc:
@@ -273,24 +242,15 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             raise ZeroGPUError(f"character image not found: {image}")
         if not reference_video.is_file():
             raise ZeroGPUError(f"reference video not found: {reference_video}")
-
         import asyncio
-
         with tempfile.TemporaryDirectory(prefix="zerogpu-") as download_dir:
-            result = await asyncio.to_thread(
-                self._generate_sync, image, reference_video
-            )
+            result = await asyncio.to_thread(self._generate_sync, image, reference_video)
             source = self._extract_video_result(result, Path(download_dir))
             self._validate_video(source)
-
             if source.read_bytes() == reference_video.read_bytes():
-                raise ZeroGPUError(
-                    "ZeroGPU returned a video byte-identical to the reference input"
-                )
-
+                raise ZeroGPUError("ZeroGPU returned a video byte-identical to the reference input")
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_bytes(source.read_bytes())
-
         self._validate_video(output)
         return output
 
@@ -306,12 +266,10 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             raise ZeroGPUError(
                 "ZeroGPU Wan Animate failed: "
                 f"exception_type={type(exc).__name__}; endpoint=/gradio_api/call/v2/animate_scene; "
-                f"duration_seconds={self.duration_seconds}; mode={self.mode}; "
-                f"resolution={self.resolution}; detail={self._safe_exception_message(exc)}"
+                f"duration_seconds={self.duration_seconds}; mode={self.mode}; resolution={self.resolution}; "
+                f"detail={self._safe_exception_message(exc)}"
             ) from exc
 
     def _safe_exception_message(self, exc: Exception) -> str:
         message = str(exc)
-        if self.hf_token:
-            message = message.replace(self.hf_token, "[REDACTED]")
-        return message
+        return message.replace(self.hf_token, "[REDACTED]") if self.hf_token else message
