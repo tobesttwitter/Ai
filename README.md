@@ -73,3 +73,14 @@ Foundation, mobile UI/API and playable mock are complete. Remote ComfyUI client/
 The repository now includes `ComfyUIWanAnimateProvider` and a current official Wan 2.2 Animate UI workflow template. Set `MOCK_GENERATION=false` with a remote `COMFYUI_URL` to use the provider. The provider intentionally requires an API-format workflow exported from the exact ComfyUI installation; see `workflows/comfyui/README.md`. The UI template is not falsely treated as API JSON.
 
 Real Wan inference has **not** been validated in this development environment because no reachable GPU/ComfyUI worker is available. The provider is designed to fail clearly rather than silently fall back to mock output.
+
+
+## $0 GPU worker selection (September 2026)
+
+The selected worker target is **Kaggle Notebook T4x2**. Kaggle's current announcement says T4x2 remains available with two 16 GB GPUs, and its GPU documentation describes a free weekly quota and session limits. This is temporary compute, not a permanent server. https://www.kaggle.com/product-announcements/735239 https://www.kaggle.com/docs/efficient-gpu-usage
+
+A reproducible worker notebook and setup scripts are under `gpu-worker/kaggle/`. A public community implementation specifically reports Wan 2.2 Animate 14B GGUF on Kaggle T4x2 and documents a Q3_K_M low-VRAM configuration, which is the baseline we are using for the first experiment: https://github.com/kelvinweijun/wan-2.2-animate-comfyui-kaggle
+
+Other free options were checked. Google Colab's free tier does provide GPUs, but Google explicitly says free resources are not guaranteed and restricts using managed free runtimes primarily through a web UI/remote-control style workflow, making it unsuitable as our ComfyUI server target. https://research.google.com/colaboratory/faq.html Hugging Face ZeroGPU now has free RTX Pro 6000 Blackwell slices and an exact Wan2.2 Animate public Space exists, but ZeroGPU hosting is Gradio-only and free accounts receive only a small daily GPU quota, so it is useful as an independent demonstration but not a suitable replacement for the ComfyUI worker architecture. https://huggingface.co/docs/hub/spaces-zerogpu
+
+**Real GPU validation status:** not yet completed. This development session has no NVIDIA GPU and no authenticated Kaggle/Hugging Face runtime access. The repository therefore does not claim a successful Wan generation. The worker setup is ready for the first real validation session.
