@@ -6,12 +6,17 @@ from app.config import settings
 from app.jobs import JobManager
 from app.pipeline import GenerationPipeline,MockMotionProvider,MockLipSyncProvider,FFmpegVideoProcessor
 from app.storage import Storage
+from app.comfyui import ComfyUIClient
+from app.wan import ComfyUIWanAnimateProvider
 storage=Storage(settings.storage_root)
-pipeline=GenerationPipeline(MockMotionProvider(settings.mock_delay_seconds),MockLipSyncProvider(settings.mock_delay_seconds),FFmpegVideoProcessor(settings.ffmpeg_binary))
+if settings.mock_generation: motion=MockMotionProvider(settings.mock_delay_seconds)
+else:
+ if not settings.comfyui_url: raise RuntimeError("MOCK_GENERATION=false requires COMFYUI_URL")
+ motion=ComfyUIWanAnimateProvider(ComfyUIClient(settings.comfyui_url,settings.comfyui_timeout_seconds),settings.comfyui_wan_workflow_api_path,settings.comfyui_wan_image_node,settings.comfyui_wan_image_field,settings.comfyui_wan_video_node,settings.comfyui_wan_video_field)
+pipeline=GenerationPipeline(motion,MockLipSyncProvider(settings.mock_delay_seconds),FFmpegVideoProcessor(settings.ffmpeg_binary))
 jobs=JobManager(pipeline,storage)
-app=FastAPI(title=settings.app_name,version="0.2.0")
+app=FastAPI(title=settings.app_name,version="0.3.0")
 register_routes(app,settings,storage,jobs)
-web=Path(__file__).resolve().parent.parent/"web"
-app.mount("/web",StaticFiles(directory=web,html=True),name="web")
+web=Path(__file__).resolve().parent.parent/"web"; app.mount("/web",StaticFiles(directory=web,html=True),name="web")
 @app.get("/",include_in_schema=False)
 async def root(): return {"name":settings.app_name,"web":"/web/"}
