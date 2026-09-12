@@ -55,10 +55,12 @@ def probe(path: Path) -> dict:
 
 
 def main() -> None:
+    hf_token = os.getenv("HF_TOKEN")
     print(f"Space: {SPACE}")
     print("API: /animate_scene")
     print("Mode: Video → Ref Image")
     print("Duration: 2 seconds")
+    print(f"HF_TOKEN present: {bool(hf_token)}")
     print("Downloading public Space examples...")
     download(IMAGE_URL, IMAGE)
     download(VIDEO_URL, VIDEO)
@@ -69,7 +71,7 @@ def main() -> None:
         duration_seconds=2,
         mode="Video → Ref Image",
         timeout_seconds=float(os.getenv("ZEROGPU_TIMEOUT_SECONDS", "900")),
-        hf_token=os.getenv("HF_TOKEN"),
+        hf_token=hf_token,
     )
     asyncio.run(provider.generate(IMAGE, VIDEO, OUTPUT))
 
