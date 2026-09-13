@@ -10,6 +10,9 @@ on:
         description: URL to target video
         required: true
         type: string
+  push:
+    paths:
+      - '.face-swap-trigger'
 
 jobs:
   face-swap:
@@ -25,8 +28,8 @@ jobs:
         run: python -m pip install facefusion
       - name: Download inputs
         run: |
-          curl -L "${{ inputs.source_url }}" -o source.jpg
-          curl -L "${{ inputs.target_url }}" -o target.mp4
+          curl -L "${{ inputs.source_url || 'https://raw.githubusercontent.com/opencv/opencv/master/samples/data/lena.jpg' }}" -o source.jpg
+          curl -L "${{ inputs.target_url || 'https://github.com/gradio-app/gradio/raw/main/gradio/media_assets/videos/world.mp4' }}" -o target.mp4
       - name: Run face swap
         run: |
           facefusion headless-run \
