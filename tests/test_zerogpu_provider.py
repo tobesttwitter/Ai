@@ -72,10 +72,6 @@ def test_upload_flow_returns_gradio_filedata(monkeypatch, tmp_path):
 
     assert result == {
         "path": "/tmp/character.png",
-        "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/character.png",
-        "size": 5,
-        "orig_name": "character.png",
-        "mime_type": "image/png",
         "meta": {"_type": "gradio.FileData"},
     }
     request, _ = capture.requests[0]
@@ -108,10 +104,6 @@ def test_upload_fallback_on_singular_file_field(monkeypatch):
 
     assert result == {
         "path": "/tmp/uploaded.mp4",
-        "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/uploaded.mp4",
-        "size": 5,
-        "orig_name": "test.mp4",
-        "mime_type": "video/mp4",
         "meta": {"_type": "gradio.FileData"},
     }
     assert b'name="files"' in calls[0].data
@@ -153,8 +145,8 @@ def test_generation_payload_matches_live_openapi(monkeypatch):
     provider = ZeroGPUWanProvider(mode="Pose Retarget", resolution="Low Res")
 
     event_id = provider._post_generation(
-        {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
-        {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
+        {"path": "/tmp/video.mp4", "meta": {"_type": "gradio.FileData"}},
+        {"path": "/tmp/image.png", "meta": {"_type": "gradio.FileData"}},
     )
 
     assert event_id == "evt-123"
@@ -162,9 +154,9 @@ def test_generation_payload_matches_live_openapi(monkeypatch):
     assert request.full_url.endswith("/gradio_api/call/v2/animate_scene")
     payload = json.loads(request.data)
     assert payload == {
-        "input_video": {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
+        "input_video": {"path": "/tmp/video.mp4", "meta": {"_type": "gradio.FileData"}},
         "max_duration_s": 2,
-        "edited_frame": {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
+        "edited_frame": {"path": "/tmp/image.png", "meta": {"_type": "gradio.FileData"}},
         "rc_str": "Pose Retarget",
         "resolution_choice": "Low Res",
     }
@@ -245,23 +237,9 @@ def test_live_rest_flow_uses_current_api(monkeypatch, tmp_path):
     assert generation_request.method == "POST"
     payload = json.loads(generation_request.data)
     assert payload == {
-        "input_video": {
-            "path": "/tmp/reference.mp4",
-            "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/reference.mp4",
-            "size": 5,
-            "orig_name": "reference.mp4",
-            "mime_type": "video/mp4",
-            "meta": {"_type": "gradio.FileData"},
-        },
+        "input_video": {"path": "/tmp/reference.mp4", "meta": {"_type": "gradio.FileData"}},
         "max_duration_s": 2,
-        "edited_frame": {
-            "path": "/tmp/character.png",
-            "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/character.png",
-            "size": 5,
-            "orig_name": "character.png",
-            "mime_type": "image/png",
-            "meta": {"_type": "gradio.FileData"},
-        },
+        "edited_frame": {"path": "/tmp/character.png", "meta": {"_type": "gradio.FileData"}},
         "rc_str": "Pose Retarget",
         "resolution_choice": "Low Res",
     }
