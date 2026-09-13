@@ -2,6 +2,8 @@ import asyncio
 import json
 import sys
 import types
+import urllib.error
+from pathlib import Path
 
 import pytest
 
@@ -78,6 +80,62 @@ def test_upload_flow_returns_gradio_filedata(monkeypatch, tmp_path):
     assert request.method == "POST"
     assert b'name="files"' in request.data
     assert b'filename="character.png"' in request.data
+
+
+def test_upload_fallback_on_singular_file_field(monkeypatch):
+    calls = []
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request)
+        if len(calls) == 1:
+            raise urllib.error.HTTPError(
+                request.full_url,
+                400,
+                "Bad Request",
+                {},
+                __import__("io").BytesIO(b"files rejected"),
+            )
+        return FakeHTTPResponse(b'["/tmp/uploaded.mp4"]')
+
+    monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(Path, "read_bytes", lambda self: b"video")
+
+    provider = ZeroGPUWanProvider()
+    result = provider._upload_file(Path("test.mp4"))
+
+    assert result["path"] == "/tmp/uploaded.mp4"
+    assert result["meta"]["_type"] == "gradio.FileData"
+    assert b'name="files"' in calls[0].data
+    assert b'name="file"' in calls[1].data
+    assert provider.last_upload_field == "file"
+
+
+def test_upload_raises_when_both_field_names_fail(monkeypatch):
+    calls = []
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request)
+        raise urllib.error.HTTPError(
+            request.full_url,
+            400,
+            "Bad Request",
+            {},
+            __import__("io").BytesIO(f"rejected-{len(calls)}".encode()),
+        )
+
+    monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(Path, "read_bytes", lambda self: b"video")
+
+    with pytest.raises(ZeroGPUError) as exc_info:
+        ZeroGPUWanProvider()._upload_file(Path("test.mp4"))
+
+    message = str(exc_info.value)
+    assert "status=400" in message
+    assert message.count("status=400") == 2
+    assert 'body=rejected-1' in message
+    assert 'body=rejected-2' in message
+    assert b'name="files"' in calls[0].data
+    assert b'name="file"' in calls[1].data
 
 
 def test_generation_payload_matches_live_openapi(monkeypatch):
