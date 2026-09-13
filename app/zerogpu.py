@@ -91,8 +91,12 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
                 method="POST",
             )
             try:
+                self._debug_request("POST", request.full_url)
                 with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                    payload = json.loads(response.read().decode("utf-8"))
+                    raw_response = response.read().decode("utf-8")
+                    if self._debug_enabled:
+                        logger.debug("ZeroGPU upload raw response body: %s", raw_response)
+                    payload = json.loads(raw_response)
             except urllib.error.HTTPError as exc:
                 response_body = exc.read().decode("utf-8", errors="replace")
                 attempts.append((field_name, str(exc.code), response_body))
@@ -152,10 +156,8 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         # not the legacy {"data": [...]} wrapper used by older clients.
         payload = {
             "input_video": video_file,
-            "max_duration_s": self.duration_seconds,
             "edited_frame": image_file,
             "rc_str": self.mode,
-            "resolution_choice": self.resolution,
         }
         request = urllib.request.Request(
             f"{self._base_url}/gradio_api/call/v2/animate_scene",
@@ -164,8 +166,12 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             method="POST",
         )
         try:
+            self._debug_request("POST", request.full_url)
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                result = json.loads(response.read().decode("utf-8"))
+                raw_response = response.read().decode("utf-8")
+                if self._debug_enabled:
+                    logger.debug("ZeroGPU generation raw response body: %s", raw_response)
+                result = json.loads(raw_response)
         except Exception as exc:
             raise ZeroGPUError(
                 "ZeroGPU Wan Animate submission failed: "
@@ -195,6 +201,14 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
                 f"resolution={self.resolution}; detail={self._safe_exception_message(exc)}"
             ) from exc
 
+    @property
+    def _debug_enabled(self) -> bool:
+        return __import__("os").environ.get("ZEROGPU_DEBUG") == "1"
+
+    def _debug_request(self, method: str, url: str) -> None:
+        if self._debug_enabled:
+            logger.debug("ZeroGPU request method=%s url=%s", method, url)
+
     def _stream_result(self, event_id: str) -> list[Any]:
         quoted_event_id = urllib.parse.quote(event_id, safe="")
         request = urllib.request.Request(
@@ -203,10 +217,13 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             method="GET",
         )
         try:
+            self._debug_request("GET", request.full_url)
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                 event_name: str | None = None
                 data_lines: list[str] = []
                 for raw_line in response:
+                    if self._debug_enabled:
+                        logger.debug("ZeroGPU SSE line: %r", raw_line)
                     line = raw_line.decode("utf-8").rstrip("\r\n")
                     if not line:
                         if event_name is not None:
