@@ -128,6 +128,28 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             raise ZeroGPUError("ZeroGPU generation response missing event_id")
         return event_id
 
+    def _client_generate(self, image: Path, reference_video: Path) -> list[Any]:
+        """Call the live Gradio 6 Space through the current Python client."""
+        try:
+            from gradio_client import Client, handle_file
+            client = Client(self._base_url, token=self.hf_token, verbose=False)
+            job = client.submit(
+                handle_file(str(reference_video)),
+                self.duration_seconds,
+                handle_file(str(image)),
+                self.mode,
+                self.resolution,
+                api_name="/animate_scene",
+            )
+            return job.result(timeout=self.timeout_seconds)
+        except Exception as exc:
+            raise ZeroGPUError(
+                "ZeroGPU Wan Animate client call failed: "
+                f"exception_type={type(exc).__name__}; endpoint=/animate_scene; "
+                f"duration_seconds={self.duration_seconds}; mode={self.mode}; "
+                f"resolution={self.resolution}; detail={self._safe_exception_message(exc)}"
+            ) from exc
+
     def _stream_result(self, event_id: str) -> list[Any]:
         quoted_event_id = urllib.parse.quote(event_id, safe="")
         request = urllib.request.Request(
@@ -262,10 +284,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
 
     def _generate_sync(self, image: Path, reference_video: Path):
         try:
-            video_file = self._upload_file(reference_video)
-            image_file = self._upload_file(image)
-            event_id = self._post_generation(video_file, image_file)
-            return self._stream_result(event_id)
+            return self._client_generate(image, reference_video)
         except ZeroGPUError:
             raise
         except Exception as exc:
