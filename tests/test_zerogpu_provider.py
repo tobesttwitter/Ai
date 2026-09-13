@@ -151,7 +151,7 @@ def test_full_two_file_flow_calls_upload_twice_then_submit_then_stream(monkeypat
         "input_video": {"path": "/tmp/reference.mp4", "orig_name": "reference.mp4", "meta": {"_type": "gradio.FileData"}},
         "max_duration_s": 2,
         "edited_frame": {"path": "/tmp/character.png", "orig_name": "character.png", "meta": {"_type": "gradio.FileData"}},
-        "rc_str": "Character Swap",
+        "rc_str": "Pose Retarget",
         "resolution_choice": "Low Res",
     }
     assert result[0]["mime_type"] == "video/mp4"
