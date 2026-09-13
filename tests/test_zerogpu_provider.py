@@ -161,11 +161,15 @@ def test_generation_payload_matches_live_openapi(monkeypatch):
     request, _ = capture.requests[0]
     assert request.full_url.endswith("/gradio_api/call/animate_scene")
     payload = json.loads(request.data)
+    session_hash = payload.pop("session_hash")
+    assert isinstance(session_hash, str) and session_hash
     assert payload == {
         "data": [
             {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
+            2,
             {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
             "Pose Retarget",
+            "Low Res",
         ]
     }
 
@@ -243,9 +247,11 @@ def test_live_rest_flow_uses_current_api(monkeypatch, tmp_path):
     generation_request, _ = capture.requests[2]
     assert generation_request.full_url.endswith("/gradio_api/call/animate_scene")
     assert generation_request.method == "POST"
-    # Matches Space function signature:
-    # def animate_scene(input_video, edited_frame, rc_str, session_id=None, progress=...)
-    assert json.loads(generation_request.data)["data"] == [
+    payload = json.loads(generation_request.data)
+    session_hash = payload.get("session_hash")
+    assert isinstance(session_hash, str) and session_hash
+    assert len(payload["data"]) == 5
+    assert payload["data"] == [
         {
             "path": "/tmp/reference.mp4",
             "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/reference.mp4",
@@ -263,6 +269,7 @@ def test_live_rest_flow_uses_current_api(monkeypatch, tmp_path):
             "meta": {"_type": "gradio.FileData"},
         },
         "Pose Retarget",
+        "Low Res",
     ]
 
     stream_request, _ = capture.requests[3]

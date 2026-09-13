@@ -168,8 +168,16 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
 
     def _post_generation(self, video_file: dict[str, Any], image_file: dict[str, Any]) -> str:
         # Gradio /call/{api_name} expects a positional argument list matching the function signature.
+        session_hash = uuid.uuid4().hex
         payload = {
-            "data": [video_file, image_file, self.mode],
+            "data": [
+                video_file,
+                self.duration_seconds,
+                image_file,
+                self.mode,
+                self.resolution,
+            ],
+            "session_hash": session_hash,
         }
         request = urllib.request.Request(
             f"{self._base_url}/gradio_api/call/animate_scene",
