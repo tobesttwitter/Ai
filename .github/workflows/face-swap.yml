@@ -37,6 +37,8 @@ jobs:
           ls -la target_small.mp4
           ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames,r_frame_rate,width,height -of default=noprint_wrappers=1 target_small.mp4
       - name: Run face swap
+        env:
+          PYTHONUNBUFFERED: "1"
         run: |
           facefusion headless-run \
             -s source.jpg \
