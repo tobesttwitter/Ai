@@ -52,7 +52,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
     def _base_url(self) -> str:
         if self.space.startswith(("http://", "https://")):
             return self.space.rstrip("/")
-        return f"https://{self.space.replace('/', '-').lower()}.hf.space"
+        # Hugging Face flattens the Space repo id into a DNS-safe subdomain.\n        # Dots in repo names are also converted to hyphens (e.g. Wan2.2 -> wan2-2).\n        subdomain = self.space.replace("/", "-").replace(".", "-").lower()\n        return f"https://{subdomain}.hf.space"
 
     def _headers(self, content_type: str | None = None) -> dict[str, str]:
         headers = {"Accept": "application/json"}
