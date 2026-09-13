@@ -51,10 +51,12 @@ jobs:
           ls -la /tmp/wav2lip_gan.onnx
       - name: Install lipsync dependencies
         run: python -m pip install -r requirements-lipsync.txt
-      - name: Download audio
+      - name: Generate test audio
         run: |
-          curl -fL "${{ inputs.audio_url || 'AUDIO_URL_PLACEHOLDER' }}" -o audio.wav
+          sudo apt-get install -y espeak-ng
+          espeak-ng -w audio.wav "This is a test of the lip sync system. The quick brown fox jumps over the lazy dog."
           ls -la audio.wav
+          file audio.wav
       - name: Run lip sync
         run: python scripts/lip_sync.py output.mp4 audio.wav final.mp4
       - name: Upload final output
