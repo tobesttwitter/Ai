@@ -159,7 +159,7 @@ def test_generation_payload_matches_live_openapi(monkeypatch):
 
     assert event_id == "evt-123"
     request, _ = capture.requests[0]
-    assert request.full_url.endswith("/gradio_api/call/animate_scene")
+    assert request.full_url.endswith("/gradio_api/call/v2/animate_scene")
     payload = json.loads(request.data)
     assert payload == {
         "input_video": {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
