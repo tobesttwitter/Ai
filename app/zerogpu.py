@@ -197,7 +197,20 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         return text.replace(self.hf_token, "[REDACTED]") if self.hf_token else text
 
     def _extract_video_result(self, outputs: list[Any], download_dir: Path) -> Path:
+        video_suffixes = {".mp4", ".webm", ".mov", ".mkv"}
         for value in outputs:
+            if isinstance(value, (str, Path)):
+                candidate = str(value)
+                parsed = urllib.parse.urlparse(candidate)
+                suffix = Path(parsed.path).suffix.lower()
+                if suffix not in video_suffixes:
+                    continue
+                if candidate.startswith(("http://", "https://")):
+                    return self._download_video_url(candidate, download_dir, suffix)
+                path = Path(candidate)
+                if path.is_file():
+                    return path
+                continue
             if not isinstance(value, dict):
                 continue
             mime_type = str(value.get("mime_type") or "")
@@ -205,7 +218,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             path = value.get("path")
             url = value.get("url")
             suffix = Path(urllib.parse.urlparse(str(url or "")).path).suffix.lower() or Path(orig_name).suffix.lower()
-            if not (mime_type.startswith("video/") or suffix in {".mp4", ".webm", ".mov"}):
+            if not (mime_type.startswith("video/") or suffix in video_suffixes):
                 continue
             if isinstance(url, str) and url.startswith(("http://", "https://")):
                 return self._download_video_url(url, download_dir, suffix or ".mp4")
