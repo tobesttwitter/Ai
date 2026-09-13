@@ -57,7 +57,7 @@ jobs:
         run: python -m pip install -r requirements-lipsync.txt
       - name: Download audio
         run: |
-          curl -fL "${{ inputs.audio_url || 'AUDIO_PLACEHOLDER' }}" -o audio.wav
+          curl -fL "${{ inputs.audio_url || 'https://upload.wikimedia.org/wikipedia/commons/5/52/Fr_The_Simpsons_Skateboarding.ogg?utm_source=fr.wikipedia.org&utm_campaign=index&utm_content=original' }}" -o audio.wav
           ls -la audio.wav
       - name: Run lip sync
         run: python scripts/lip_sync.py output.mp4 audio.wav final.mp4
