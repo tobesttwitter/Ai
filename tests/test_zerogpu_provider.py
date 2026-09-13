@@ -172,6 +172,13 @@ def test_live_client_flow_uses_current_gradio_client(monkeypatch, tmp_path):
     assert calls[2] == ("result", 900)
 
 
+def test_generated_local_filepath_is_accepted(tmp_path):
+    result_path = tmp_path / "result.mp4"
+    result_path.write_bytes(b"video")
+    result = ZeroGPUWanProvider()._extract_video_result((str(result_path),), tmp_path / "downloads")
+    assert result == result_path
+
+
 def test_generated_remote_url_is_downloaded_without_forwarding_token(monkeypatch, tmp_path):
     provider = ZeroGPUWanProvider(hf_token="hf-secret")
     download_dir = tmp_path / "downloads"
