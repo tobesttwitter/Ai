@@ -147,7 +147,13 @@ def test_full_two_file_flow_calls_upload_twice_then_submit_then_stream(monkeypat
     assert calls[1].full_url.endswith("/gradio_api/upload")
     assert calls[2].full_url.endswith("/gradio_api/call/v2/animate_scene")
     assert calls[3].full_url.endswith("/gradio_api/call/animate_scene/evt-1")
-    assert json.loads(calls[2].data) == {\n        "input_video": {"path": "/tmp/reference.mp4", "orig_name": "reference.mp4", "meta": {"_type": "gradio.FileData"}},\n        "max_duration_s": 2,\n        "edited_frame": {"path": "/tmp/character.png", "orig_name": "character.png", "meta": {"_type": "gradio.FileData"}},\n        "rc_str": "Character Swap",\n        "resolution_choice": "Low Res",\n    }
+    assert json.loads(calls[2].data) == {
+        "input_video": {"path": "/tmp/reference.mp4", "orig_name": "reference.mp4", "meta": {"_type": "gradio.FileData"}},
+        "max_duration_s": 2,
+        "edited_frame": {"path": "/tmp/character.png", "orig_name": "character.png", "meta": {"_type": "gradio.FileData"}},
+        "rc_str": "Character Swap",
+        "resolution_choice": "Low Res",
+    }
     assert result[0]["mime_type"] == "video/mp4"
 
 
