@@ -1,0 +1,5 @@
+tqdm
+librosa
+numba
+scipy
+Pillow
