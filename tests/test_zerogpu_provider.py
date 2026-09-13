@@ -259,11 +259,11 @@ def test_suspiciously_small_output_is_rejected(tmp_path):
 
 def test_duration_validation():
     assert ZeroGPUWanProvider(duration_seconds=2)
-    assert ZeroGPUWanProvider(duration_seconds=4)
+    assert ZeroGPUWanProvider(duration_seconds=20)
     with pytest.raises(ValueError):
         ZeroGPUWanProvider(duration_seconds=1)
     with pytest.raises(ValueError):
-        ZeroGPUWanProvider(duration_seconds=5)
+        ZeroGPUWanProvider(duration_seconds=21)
 
 
 def test_input_validation(tmp_path):
