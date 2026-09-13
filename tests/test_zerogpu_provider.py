@@ -46,10 +46,10 @@ class FakeRequestCapture:
 
 def test_current_api_defaults_are_verified():
     provider = ZeroGPUWanProvider()
-    assert provider.mode == "Video → Ref Image"
+    assert provider.mode == "Pose Retarget"
     assert provider.resolution == "Low Res"
     assert provider.duration_seconds == 2
-    assert ZeroGPUWanProvider.VALID_MODES == {"Video → Ref Image", "Video ← Ref Image"}
+    assert ZeroGPUWanProvider.VALID_MODES == {"Character Swap", "Pose Retarget"}
     assert ZeroGPUWanProvider.VALID_RESOLUTIONS == {"Low Res", "Medium Res"}
 
 
@@ -80,7 +80,7 @@ def test_upload_flow_returns_gradio_filedata(monkeypatch, tmp_path):
 def test_generation_payload_matches_live_openapi(monkeypatch):
     capture = FakeRequestCapture(FakeHTTPResponse(b'{"event_id":"evt-123"}'))
     monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", capture)
-    provider = ZeroGPUWanProvider(mode="Video → Ref Image", resolution="Low Res")
+    provider = ZeroGPUWanProvider(mode="Pose Retarget", resolution="Low Res")
 
     event_id = provider._post_generation(
         {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
@@ -95,7 +95,7 @@ def test_generation_payload_matches_live_openapi(monkeypatch):
         "input_video": {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
         "max_duration_s": 2,
         "edited_frame": {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
-        "rc_str": "Video → Ref Image",
+        "rc_str": "Pose Retarget",
         "resolution_choice": "Low Res",
     }
 
