@@ -14,10 +14,6 @@ on:
         description: URL to audio file
         required: false
         type: string
-  push:
-    paths:
-      - '.face-swap-trigger'
-
 jobs:
   face-swap:
     runs-on: ubuntu-latest
