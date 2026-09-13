@@ -34,8 +34,8 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         hf_token: str | None = None,
         ffprobe_binary: str = "ffprobe",
     ):
-        if duration_seconds < 2 or duration_seconds > 4:
-            raise ValueError("ZeroGPU duration must be between 2 and 4 seconds for the current public Space")
+        if duration_seconds < 2 or duration_seconds > 20:
+            raise ValueError("ZeroGPU duration must be between 2 and 20 seconds for the current public Space")
         if mode not in self.VALID_MODES:
             raise ValueError(f"unsupported ZeroGPU Wan Animate mode: {mode}")
         if resolution not in self.VALID_RESOLUTIONS:
