@@ -4,6 +4,7 @@ import json
 import mimetypes
 import subprocess
 import tempfile
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -47,6 +48,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         self.timeout_seconds = timeout_seconds
         self.hf_token = hf_token
         self.ffprobe_binary = ffprobe_binary
+        self.last_upload_field: str | None = None
 
     @property
     def _base_url(self) -> str:
@@ -66,38 +68,83 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         return headers
 
     def _upload_file(self, path: Path) -> dict[str, Any]:
-        boundary = f"----ZeroGPUForm{uuid.uuid4().hex}"
         filename = path.name
         content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
         data = path.read_bytes()
-        body = (
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="files"; filename="{filename}"\r\n'
-            f"Content-Type: {content_type}\r\n\r\n"
-        ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
-        request = urllib.request.Request(
-            f"{self._base_url}/gradio_api/upload",
-            data=body,
-            headers=self._headers(f"multipart/form-data; boundary={boundary}"),
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-        except Exception as exc:
-            raise ZeroGPUError(
-                "ZeroGPU file upload failed: "
-                f"exception_type={type(exc).__name__}; endpoint=/gradio_api/upload; "
-                f"detail={self._safe_exception_message(exc)}"
-            ) from exc
-        if not isinstance(payload, list) or not payload:
-            raise ZeroGPUError("ZeroGPU file upload returned no file path")
-        uploaded = payload[0]
-        if not isinstance(uploaded, str) or not uploaded:
-            raise ZeroGPUError("ZeroGPU file upload returned an invalid file path")
-        return {"path": uploaded, "orig_name": filename, "meta": {"_type": "gradio.FileData"}}
+        attempts: list[tuple[str, str, str]] = []
 
-    def _post_generation(self, video_file: dict[str, Any], image_file: dict[str, Any]) -> str:
+        for field_name in ("files", "file"):
+            boundary = f"----ZeroGPUForm{uuid.uuid4().hex}"
+            body = (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'
+                f"Content-Type: {content_type}\r\n\r\n"
+            ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
+            request = urllib.request.Request(
+                f"{self._base_url}/gradio_api/upload",
+                data=body,
+                headers=self._headers(f"multipart/form-data; boundary={boundary}"),
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                response_body = exc.read().decode("utf-8", errors="replace")
+                attempts.append((field_name, str(exc.code), response_body))
+                if field_name == "files" and exc.code in (400, 422):
+                    continue
+                details = "; ".join(
+                    f'field="{field}" status={status} body={self._safe_exception_message_from_text(body)}'
+                    for field, status, body in attempts
+                )
+                raise ZeroGPUError(
+                    "ZeroGPU file upload failed: "
+                    f"exception_type={type(exc).__name__}; endpoint=/gradio_api/upload; "
+                    f"detail={details}"
+                ) from exc
+            except Exception as exc:
+                attempts.append((field_name, "unavailable", str(exc)))
+                details = "; ".join(
+                    f'field="{field}" status={status} body={self._safe_exception_message_from_text(body)}'
+                    for field, status, body in attempts
+                )
+                raise ZeroGPUError(
+                    "ZeroGPU file upload failed: "
+                    f"exception_type={type(exc).__name__}; endpoint=/gradio_api/upload; "
+                    f"detail={details}"
+                ) from exc
+
+            if field_name == "file":
+                self.last_upload_field = field_name
+            else:
+                self.last_upload_field = field_name
+            if not isinstance(payload, list) or not payload:
+                raise ZeroGPUError(
+                    "ZeroGPU file upload failed: "
+                    "exception_type=ValueError; endpoint=/gradio_api/upload; "
+                    "detail=invalid response payload"
+                )
+            uploaded = payload[0]
+            if not isinstance(uploaded, str) or not uploaded:
+                raise ZeroGPUError(
+                    "ZeroGPU file upload failed: "
+                    "exception_type=ValueError; endpoint=/gradio_api/upload; "
+                    "detail=invalid file path"
+                )
+            return {"path": uploaded, "orig_name": filename, "meta": {"_type": "gradio.FileData"}}
+
+        details = "; ".join(
+            f'field="{field}" status={status} body={self._safe_exception_message_from_text(body)}'
+            for field, status, body in attempts
+        )
+        raise ZeroGPUError(
+            "ZeroGPU file upload failed: "
+            "exception_type=HTTPError; endpoint=/gradio_api/upload; "
+            f"detail={details}"
+        )
+
+(self, video_file: dict[str, Any], image_file: dict[str, Any]) -> str:
         # The live Gradio 6.14 OpenAPI schema exposes named request properties,
         # not the legacy {"data": [...]} wrapper used by older clients.
         payload = {
