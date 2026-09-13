@@ -84,3 +84,11 @@ A reproducible worker notebook and setup scripts are under `gpu-worker/kaggle/`.
 Other free options were checked. Google Colab's free tier does provide GPUs, but Google explicitly says free resources are not guaranteed and restricts using managed free runtimes primarily through a web UI/remote-control style workflow, making it unsuitable as our ComfyUI server target. https://research.google.com/colaboratory/faq.html Hugging Face ZeroGPU now has free RTX Pro 6000 Blackwell slices and an exact Wan2.2 Animate public Space exists, but ZeroGPU hosting is Gradio-only and free accounts receive only a small daily GPU quota, so it is useful as an independent demonstration but not a suitable replacement for the ComfyUI worker architecture. https://huggingface.co/docs/hub/spaces-zerogpu
 
 **Real GPU validation status:** not yet completed. This development session has no NVIDIA GPU and no authenticated Kaggle/Hugging Face runtime access. The repository therefore does not claim a successful Wan generation. The worker setup is ready for the first real validation session.
+
+## Face Swap (free, CPU-only)
+
+Trigger via GitHub Actions:
+
+    gh workflow run face-swap.yml -f source_url=<URL> -f target_url=<URL>
+
+Output is in the run's Artifacts section. Runs on GitHub's free 2000 minutes/month on public repos. CPU-only — expect a few minutes per video.
