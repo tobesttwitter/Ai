@@ -39,7 +39,9 @@ jobs:
             -s source.jpg \
             -t target.mp4 \
             -o output.mp4 \
-            --execution-providers cpu
+            --execution-providers cpu \
+            --processors face_swapper \
+            --face-swapper-model inswapper_128_fp16
       - name: Upload output
         uses: actions/upload-artifact@v4
         with:
