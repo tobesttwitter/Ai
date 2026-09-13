@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import mimetypes
+import os
 import subprocess
 import tempfile
 import urllib.error
@@ -16,6 +17,13 @@ from app.pipeline import MotionGenerationProvider
 
 
 logger = logging.getLogger(__name__)
+
+if os.environ.get("ZEROGPU_DEBUG") == "1":
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    logger.setLevel(logging.DEBUG)
 
 
 class ZeroGPUError(RuntimeError):
@@ -203,7 +211,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
 
     @property
     def _debug_enabled(self) -> bool:
-        return __import__("os").environ.get("ZEROGPU_DEBUG") == "1"
+        return os.environ.get("ZEROGPU_DEBUG") == "1"
 
     def _debug_request(self, method: str, url: str) -> None:
         if self._debug_enabled:

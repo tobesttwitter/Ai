@@ -154,10 +154,8 @@ def test_generation_payload_matches_live_openapi(monkeypatch):
     payload = json.loads(request.data)
     assert payload == {
         "input_video": {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
-        "max_duration_s": 2,
         "edited_frame": {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
         "rc_str": "Pose Retarget",
-        "resolution_choice": "Low Res",
     }
 
 
@@ -234,20 +232,20 @@ def test_live_rest_flow_uses_current_api(monkeypatch, tmp_path):
     generation_request, _ = capture.requests[2]
     assert generation_request.full_url.endswith("/gradio_api/call/v2/animate_scene")
     assert generation_request.method == "POST"
+    # Matches Space function signature:
+    # def animate_scene(input_video, edited_frame, rc_str, session_id=None, progress=...)
     assert json.loads(generation_request.data) == {
         "input_video": {
             "path": "/tmp/reference.mp4",
             "orig_name": "reference.mp4",
             "meta": {"_type": "gradio.FileData"},
         },
-        "max_duration_s": 2,
         "edited_frame": {
             "path": "/tmp/character.png",
             "orig_name": "character.png",
             "meta": {"_type": "gradio.FileData"},
         },
         "rc_str": "Pose Retarget",
-        "resolution_choice": "Low Res",
     }
 
     stream_request, _ = capture.requests[3]
