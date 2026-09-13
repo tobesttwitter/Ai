@@ -21,14 +21,14 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
     """Adapter for the current public Wan 2.2 Animate ZeroGPU Gradio REST API."""
 
     name = "zerogpu-wan2.2-animate"
-    VALID_MODES = {"Video → Ref Image", "Video ← Ref Image"}
+    VALID_MODES = {"Character Swap", "Pose Retarget"}
     VALID_RESOLUTIONS = {"Low Res", "Medium Res"}
 
     def __init__(
         self,
         space: str = "alexnasa/Wan2.2-Animate-ZEROGPU",
         duration_seconds: int = 2,
-        mode: str = "Video → Ref Image",
+        mode: str = "Pose Retarget",
         resolution: str = "Low Res",
         timeout_seconds: float = 900,
         hf_token: str | None = None,
