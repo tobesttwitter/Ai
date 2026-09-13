@@ -147,7 +147,14 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
                     "exception_type=ValueError; endpoint=/gradio_api/upload; "
                     "detail=invalid file path"
                 )
-            return {"path": uploaded, "orig_name": filename, "meta": {"_type": "gradio.FileData"}}
+            return {
+                "path": uploaded,
+                "url": f"{self._base_url}/gradio_api/file={uploaded}",
+                "size": len(data),
+                "orig_name": filename,
+                "mime_type": content_type,
+                "meta": {"_type": "gradio.FileData"},
+            }
 
         details = "; ".join(
             f'field="{field}" status={status} body={self._safe_exception_message_from_text(body)}'
@@ -168,7 +175,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             "rc_str": self.mode,
         }
         request = urllib.request.Request(
-            f"{self._base_url}/gradio_api/call/v2/animate_scene",
+            f"{self._base_url}/gradio_api/call/animate_scene",
             data=json.dumps(payload).encode("utf-8"),
             headers=self._headers("application/json"),
             method="POST",
