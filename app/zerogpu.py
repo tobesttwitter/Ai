@@ -167,20 +167,16 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         )
 
     def _post_generation(self, video_file: dict[str, Any], image_file: dict[str, Any]) -> str:
-        # Gradio /call/{api_name} expects a positional argument list matching the function signature.
-        session_hash = uuid.uuid4().hex
+        # Live /gradio_api/info schema: 5 named parameters, POST to /call/v2/{api_name}.
         payload = {
-            "data": [
-                video_file,
-                self.duration_seconds,
-                image_file,
-                self.mode,
-                self.resolution,
-            ],
-            "session_hash": session_hash,
+            "input_video": video_file,
+            "max_duration_s": self.duration_seconds,
+            "edited_frame": image_file,
+            "rc_str": self.mode,
+            "resolution_choice": self.resolution,
         }
         request = urllib.request.Request(
-            f"{self._base_url}/gradio_api/call/animate_scene",
+            f"{self._base_url}/gradio_api/call/v2/animate_scene",
             data=json.dumps(payload).encode("utf-8"),
             headers=self._headers("application/json"),
             method="POST",
@@ -195,7 +191,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         except Exception as exc:
             raise ZeroGPUError(
                 "ZeroGPU Wan Animate submission failed: "
-                f"exception_type={type(exc).__name__}; endpoint=/gradio_api/call/animate_scene; "
+                f"exception_type={type(exc).__name__}; endpoint=/gradio_api/call/v2/animate_scene; "
                 f"duration_seconds={self.duration_seconds}; mode={self.mode}; resolution={self.resolution}; "
                 f"detail={self._safe_exception_message(exc)}"
             ) from exc
