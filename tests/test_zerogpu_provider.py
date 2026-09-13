@@ -1,5 +1,7 @@
 import asyncio
 import json
+import sys
+import types
 
 import pytest
 
@@ -121,40 +123,53 @@ def test_sse_complete_event_is_parsed(monkeypatch):
     assert request.full_url.endswith("/gradio_api/call/animate_scene/evt%2F123")
 
 
-def test_full_two_file_flow_calls_upload_twice_then_submit_then_stream(monkeypatch, tmp_path):
+def test_live_client_flow_uses_current_gradio_client(monkeypatch, tmp_path):
     image = tmp_path / "character.png"
     video = tmp_path / "reference.mp4"
     image.write_bytes(b"image")
     video.write_bytes(b"video")
     calls = []
-    responses = iter([
-        FakeHTTPResponse(b'["/tmp/reference.mp4"]'),
-        FakeHTTPResponse(b'["/tmp/character.png"]'),
-        FakeHTTPResponse(b'{"event_id":"evt-1"}'),
-        FakeHTTPResponse(b'event: complete\ndata: [{"mime_type":"video/mp4","url":"https://example.test/result.mp4"}]\n\n'),
-    ])
 
-    def fake_urlopen(request, timeout=None):
-        calls.append(request)
-        return next(responses)
+    class FakeJob:
+        def result(self, timeout=None):
+            calls.append(("result", timeout))
+            return [{"mime_type": "video/mp4", "url": "https://example.test/result.mp4"}]
 
-    monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", fake_urlopen)
-    provider = ZeroGPUWanProvider()
+    class FakeClient:
+        def __init__(self, src, hf_token=None, verbose=None):
+            calls.append(("client", src, hf_token, verbose))
+
+        def submit(self, *args, api_name=None):
+            calls.append(("submit", args, api_name))
+            return FakeJob()
+
+    fake_module = types.SimpleNamespace(
+        Client=FakeClient,
+        handle_file=lambda path: {"file": path},
+    )
+    monkeypatch.setitem(sys.modules, "gradio_client", fake_module)
+
+    provider = ZeroGPUWanProvider(
+        hf_token="hf-secret",
+        mode="Pose Retarget",
+        resolution="Low Res",
+    )
     result = provider._generate_sync(image, video)
 
-    assert len(calls) == 4
-    assert calls[0].full_url.endswith("/gradio_api/upload")
-    assert calls[1].full_url.endswith("/gradio_api/upload")
-    assert calls[2].full_url.endswith("/gradio_api/call/v2/animate_scene")
-    assert calls[3].full_url.endswith("/gradio_api/call/animate_scene/evt-1")
-    assert json.loads(calls[2].data) == {
-        "input_video": {"path": "/tmp/reference.mp4", "orig_name": "reference.mp4", "meta": {"_type": "gradio.FileData"}},
-        "max_duration_s": 2,
-        "edited_frame": {"path": "/tmp/character.png", "orig_name": "character.png", "meta": {"_type": "gradio.FileData"}},
-        "rc_str": "Pose Retarget",
-        "resolution_choice": "Low Res",
-    }
     assert result[0]["mime_type"] == "video/mp4"
+    assert calls[0] == ("client", provider._base_url, "hf-secret", False)
+    assert calls[1] == (
+        "submit",
+        (
+            {"file": str(video)},
+            2,
+            {"file": str(image)},
+            "Pose Retarget",
+            "Low Res",
+        ),
+        "/animate_scene",
+    )
+    assert calls[2] == ("result", 900)
 
 
 def test_generated_remote_url_is_downloaded_without_forwarding_token(monkeypatch, tmp_path):
