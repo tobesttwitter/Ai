@@ -53,6 +53,11 @@ def test_current_api_defaults_are_verified():
     assert ZeroGPUWanProvider.VALID_RESOLUTIONS == {"Low Res", "Medium Res"}
 
 
+def test_space_name_is_mapped_to_the_real_hf_subdomain():
+    provider = ZeroGPUWanProvider()
+    assert provider._base_url == "https://alexnasa-wan2-2-animate-zerogpu.hf.space"
+
+
 def test_upload_flow_returns_gradio_filedata(monkeypatch, tmp_path):
     image = tmp_path / "character.png"
     image.write_bytes(b"image")
@@ -142,7 +147,7 @@ def test_full_two_file_flow_calls_upload_twice_then_submit_then_stream(monkeypat
     assert calls[1].full_url.endswith("/gradio_api/upload")
     assert calls[2].full_url.endswith("/gradio_api/call/v2/animate_scene")
     assert calls[3].full_url.endswith("/gradio_api/call/animate_scene/evt-1")
-    assert len(json.loads(calls[2].data)["data"]) == 5
+    assert json.loads(calls[2].data) == {\n        "input_video": {"path": "/tmp/reference.mp4", "orig_name": "reference.mp4", "meta": {"_type": "gradio.FileData"}},\n        "max_duration_s": 2,\n        "edited_frame": {"path": "/tmp/character.png", "orig_name": "character.png", "meta": {"_type": "gradio.FileData"}},\n        "rc_str": "Character Swap",\n        "resolution_choice": "Low Res",\n    }
     assert result[0]["mime_type"] == "video/mp4"
 
 
