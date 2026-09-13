@@ -164,18 +164,12 @@ def test_generation_payload_matches_live_openapi(monkeypatch):
     assert payload == {
         "input_video": {
             "path": "/tmp/video.mp4",
-            "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/video.mp4",
-            "size": 0,
             "orig_name": "video.mp4",
-            "mime_type": "video/mp4",
             "meta": {"_type": "gradio.FileData"},
         },
         "edited_frame": {
             "path": "/tmp/image.png",
-            "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/image.png",
-            "size": 0,
             "orig_name": "image.png",
-            "mime_type": "image/png",
             "meta": {"_type": "gradio.FileData"},
         },
         "rc_str": "Pose Retarget",
