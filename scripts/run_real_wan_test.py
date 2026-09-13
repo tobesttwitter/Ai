@@ -51,7 +51,7 @@ def probe(path: Path) -> dict:
 
 def main() -> None:
     hf_token = os.getenv("HF_TOKEN")
-    mode = os.getenv("ZEROGPU_MODE", "Character Swap")
+    mode = os.getenv("ZEROGPU_MODE", "Pose Retarget")
     resolution = os.getenv("ZEROGPU_RESOLUTION", "Low Res")
     print(f"Space: {SPACE}")
     print("API: /animate_scene")
