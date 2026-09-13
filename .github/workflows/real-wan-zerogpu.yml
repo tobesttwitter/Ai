@@ -32,6 +32,7 @@ jobs:
           ZEROGPU_SPACE: alexnasa/Wan2.2-Animate-ZEROGPU
           ZEROGPU_DURATION_SECONDS: "2"
           ZEROGPU_TIMEOUT_SECONDS: "900"
+          ZEROGPU_DEBUG: "1"
         run: python scripts/run_real_wan_test.py
 
       - name: Upload real Wan output
