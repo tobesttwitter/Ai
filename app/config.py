@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     comfyui_wan_workflow_api_path:Path=Path("./workflows/comfyui/wan2.2-animate.api.json")
     comfyui_wan_image_node:str="10"; comfyui_wan_image_field:str="image"; comfyui_wan_video_node:str="145"; comfyui_wan_video_field:str="video"
     zerogpu_space:str="alexnasa/Wan2.2-Animate-ZEROGPU"
-    zerogpu_duration_seconds:int=2; zerogpu_mode:str="Pose Retarget"; zerogpu_resolution:str="Low Res"; zerogpu_timeout_seconds:float=900
+    zerogpu_duration_seconds:int=2; zerogpu_mode:str="Video → Ref Image"; zerogpu_resolution:str="Low Res"; zerogpu_timeout_seconds:float=900
     hf_token:str|None=None
     model_config=SettingsConfigDict(env_file=".env",extra="ignore",case_sensitive=False)
 
