@@ -1,0 +1,4 @@
+insightface @ https://huggingface.co/iwr-redmond/linux-wheels/resolve/main/insightface-0.7.3-cp311-cp311-linux_x86_64.whl
+onnxruntime==1.19.2
+opencv-python-headless==4.10.0.84
+numpy<2

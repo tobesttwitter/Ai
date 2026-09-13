@@ -4,11 +4,11 @@ on:
     inputs:
       source_url:
         description: URL to source face image
-        required: true
+        required: false
         type: string
       target_url:
         description: URL to target video
-        required: true
+        required: false
         type: string
   push:
     paths:
@@ -17,31 +17,29 @@ on:
 jobs:
   face-swap:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - name: Install facefusion
+      - name: Install Python dependencies
         run: |
-          git clone --depth 1 https://github.com/facefusion/facefusion.git /tmp/facefusion
-          cd /tmp/facefusion
-          python install.py default --skip-conda
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-face.txt
+          python -c "import insightface; print('insightface', insightface.__version__)"
+      - name: Download inswapper model
+        run: |
+          curl -L -o inswapper_128.onnx https://huggingface.co/ashleykleynhans/inswapper/resolve/main/inswapper_128.onnx
+          ls -la inswapper_128.onnx
       - name: Download inputs
         run: |
           curl -L "${{ inputs.source_url || 'https://raw.githubusercontent.com/opencv/opencv/master/samples/data/lena.jpg' }}" -o source.jpg
           curl -L "${{ inputs.target_url || 'https://github.com/gradio-app/gradio/raw/main/gradio/media_assets/videos/world.mp4' }}" -o target.mp4
       - name: Run face swap
-        run: |
-          python /tmp/facefusion/facefusion.py headless-run \
-            -s source.jpg \
-            -t target.mp4 \
-            -o output.mp4 \
-            --execution-providers cpu \
-            --processors face_swapper \
-            --face-swapper-model inswapper_128_fp16
+        run: python scripts/face_swap.py source.jpg target.mp4 output.mp4
       - name: Upload output
         uses: actions/upload-artifact@v4
         with:
