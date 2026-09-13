@@ -132,7 +132,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         """Call the live Gradio 6 Space through the current Python client."""
         try:
             from gradio_client import Client, handle_file
-            client = Client(self._base_url, token=self.hf_token, verbose=False)
+            client = Client(self._base_url, hf_token=self.hf_token, verbose=False)
             job = client.submit(
                 handle_file(str(reference_video)),
                 self.duration_seconds,
