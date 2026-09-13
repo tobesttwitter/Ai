@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     zerogpu_space:str="alexnasa/Wan2.2-Animate-ZEROGPU"
     zerogpu_duration_seconds:int=2; zerogpu_mode:str="Pose Retarget"; zerogpu_resolution:str="Low Res"; zerogpu_timeout_seconds:float=900
     hf_token:str|None=None
+    github_token:str|None=None
+    github_repo:str="tobesttwitter/Ai"
+    github_workflow_file:str="face-swap.yml"
     model_config=SettingsConfigDict(env_file=".env",extra="ignore",case_sensitive=False)
 
 settings=Settings()
