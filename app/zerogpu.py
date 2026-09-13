@@ -41,7 +41,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         self,
         space: str = "alexnasa/Wan2.2-Animate-ZEROGPU",
         duration_seconds: int = 2,
-        mode: str = "Pose Retarget",
+        mode: str = "Character Swap",
         resolution: str = "Low Res",
         timeout_seconds: float = 900,
         hf_token: str | None = None,

@@ -50,7 +50,7 @@ class FakeRequestCapture:
 
 def test_current_api_defaults_are_verified():
     provider = ZeroGPUWanProvider()
-    assert provider.mode == "Pose Retarget"
+    assert provider.mode == "Character Swap"
     assert provider.resolution == "Low Res"
     assert provider.duration_seconds == 2
     assert ZeroGPUWanProvider.VALID_MODES == {"Character Swap", "Pose Retarget"}
