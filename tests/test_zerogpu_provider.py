@@ -162,17 +162,11 @@ def test_generation_payload_matches_live_openapi(monkeypatch):
     assert request.full_url.endswith("/gradio_api/call/animate_scene")
     payload = json.loads(request.data)
     assert payload == {
-        "input_video": {
-            "path": "/tmp/video.mp4",
-            "orig_name": "video.mp4",
-            "meta": {"_type": "gradio.FileData"},
-        },
-        "edited_frame": {
-            "path": "/tmp/image.png",
-            "orig_name": "image.png",
-            "meta": {"_type": "gradio.FileData"},
-        },
-        "rc_str": "Pose Retarget",
+        "data": [
+            {"path": "/tmp/video.mp4", "orig_name": "video.mp4", "meta": {"_type": "gradio.FileData"}},
+            {"path": "/tmp/image.png", "orig_name": "image.png", "meta": {"_type": "gradio.FileData"}},
+            "Pose Retarget",
+        ]
     }
 
 
@@ -251,8 +245,8 @@ def test_live_rest_flow_uses_current_api(monkeypatch, tmp_path):
     assert generation_request.method == "POST"
     # Matches Space function signature:
     # def animate_scene(input_video, edited_frame, rc_str, session_id=None, progress=...)
-    assert json.loads(generation_request.data) == {
-        "input_video": {
+    assert json.loads(generation_request.data)["data"] == [
+        {
             "path": "/tmp/reference.mp4",
             "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/reference.mp4",
             "size": 5,
@@ -260,7 +254,7 @@ def test_live_rest_flow_uses_current_api(monkeypatch, tmp_path):
             "mime_type": "video/mp4",
             "meta": {"_type": "gradio.FileData"},
         },
-        "edited_frame": {
+        {
             "path": "/tmp/character.png",
             "url": "https://alexnasa-wan2-2-animate-zerogpu.hf.space/gradio_api/file=/tmp/character.png",
             "size": 5,
@@ -268,8 +262,8 @@ def test_live_rest_flow_uses_current_api(monkeypatch, tmp_path):
             "mime_type": "image/png",
             "meta": {"_type": "gradio.FileData"},
         },
-        "rc_str": "Pose Retarget",
-    }
+        "Pose Retarget",
+    ]
 
     stream_request, _ = capture.requests[3]
     assert stream_request.full_url.endswith("/gradio_api/call/animate_scene/evt-123")

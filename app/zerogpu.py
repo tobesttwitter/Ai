@@ -167,12 +167,9 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         )
 
     def _post_generation(self, video_file: dict[str, Any], image_file: dict[str, Any]) -> str:
-        # The live Gradio 6.14 OpenAPI schema exposes named request properties,
-        # not the legacy {"data": [...]} wrapper used by older clients.
+        # Gradio /call/{api_name} expects a positional argument list matching the function signature.
         payload = {
-            "input_video": video_file,
-            "edited_frame": image_file,
-            "rc_str": self.mode,
+            "data": [video_file, image_file, self.mode],
         }
         request = urllib.request.Request(
             f"{self._base_url}/gradio_api/call/animate_scene",
@@ -190,7 +187,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
         except Exception as exc:
             raise ZeroGPUError(
                 "ZeroGPU Wan Animate submission failed: "
-                f"exception_type={type(exc).__name__}; endpoint=/gradio_api/call/v2/animate_scene; "
+                f"exception_type={type(exc).__name__}; endpoint=/gradio_api/call/animate_scene; "
                 f"duration_seconds={self.duration_seconds}; mode={self.mode}; resolution={self.resolution}; "
                 f"detail={self._safe_exception_message(exc)}"
             ) from exc
