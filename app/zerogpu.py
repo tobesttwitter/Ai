@@ -194,7 +194,10 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
     def _download_video_url(self, url: str, download_dir: Path, suffix: str) -> Path:
         download_dir.mkdir(parents=True, exist_ok=True)
         target = download_dir / f"result{suffix}"
-        request = urllib.request.Request(url, headers=self._headers(), method="GET")
+        parsed = urllib.parse.urlparse(url)
+        base_host = urllib.parse.urlparse(self._base_url).netloc
+        request_headers = self._headers() if parsed.netloc == base_host else {"Accept": "*/*"}
+        request = urllib.request.Request(url, headers=request_headers, method="GET")
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response, target.open("wb") as output:
                 while True:
