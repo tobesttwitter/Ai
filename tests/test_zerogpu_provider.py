@@ -76,6 +76,7 @@ def test_upload_flow_returns_gradio_filedata(monkeypatch, tmp_path):
     request, _ = capture.requests[0]
     assert request.full_url.endswith("/gradio_api/upload")
     assert request.method == "POST"
+    assert b'name="files"' in request.data
     assert b'filename="character.png"' in request.data
 
 
@@ -123,31 +124,32 @@ def test_sse_complete_event_is_parsed(monkeypatch):
     assert request.full_url.endswith("/gradio_api/call/animate_scene/evt%2F123")
 
 
-def test_live_client_flow_uses_current_gradio_client(monkeypatch, tmp_path):
+def test_live_rest_flow_uses_current_api(monkeypatch, tmp_path):
     image = tmp_path / "character.png"
     video = tmp_path / "reference.mp4"
     image.write_bytes(b"image")
     video.write_bytes(b"video")
-    calls = []
 
-    class FakeJob:
-        def result(self, timeout=None):
-            calls.append(("result", timeout))
-            return [{"mime_type": "video/mp4", "url": "https://example.test/result.mp4"}]
+    outputs = [{"mime_type": "video/mp4", "url": "https://example.test/result.mp4"}]
+    responses = [
+        FakeHTTPResponse(b'["/tmp/reference.mp4"]'),
+        FakeHTTPResponse(b'["/tmp/character.png"]'),
+        FakeHTTPResponse(b'{"event_id":"evt-123"}'),
+        FakeHTTPResponse(
+            b"event: complete\ndata: " + json.dumps(outputs).encode() + b"\n\n"
+        ),
+    ]
 
-    class FakeClient:
-        def __init__(self, src, hf_token=None, verbose=None):
-            calls.append(("client", src, hf_token, verbose))
+    class Capture:
+        def __init__(self):
+            self.requests = []
 
-        def submit(self, *args, api_name=None):
-            calls.append(("submit", args, api_name))
-            return FakeJob()
+        def __call__(self, request, timeout=None):
+            self.requests.append((request, timeout))
+            return responses.pop(0)
 
-    fake_module = types.SimpleNamespace(
-        Client=FakeClient,
-        handle_file=lambda path: {"file": path},
-    )
-    monkeypatch.setitem(sys.modules, "gradio_client", fake_module)
+    capture = Capture()
+    monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", capture)
 
     provider = ZeroGPUWanProvider(
         hf_token="hf-secret",
@@ -156,20 +158,50 @@ def test_live_client_flow_uses_current_gradio_client(monkeypatch, tmp_path):
     )
     result = provider._generate_sync(image, video)
 
-    assert result[0]["mime_type"] == "video/mp4"
-    assert calls[0] == ("client", provider._base_url, "hf-secret", False)
-    assert calls[1] == (
-        "submit",
-        (
-            {"file": str(video)},
-            2,
-            {"file": str(image)},
-            "Pose Retarget",
-            "Low Res",
-        ),
-        "/animate_scene",
-    )
-    assert calls[2] == ("result", 900)
+    assert result == outputs
+    assert len(capture.requests) == 4
+
+    video_request, _ = capture.requests[0]
+    assert video_request.full_url.endswith("/gradio_api/upload")
+    assert video_request.method == "POST"
+    assert b'name="files"' in video_request.data
+    assert b'filename="reference.mp4"' in video_request.data
+
+    image_request, _ = capture.requests[1]
+    assert image_request.full_url.endswith("/gradio_api/upload")
+    assert image_request.method == "POST"
+    assert b'name="files"' in image_request.data
+    assert b'filename="character.png"' in image_request.data
+
+    generation_request, _ = capture.requests[2]
+    assert generation_request.full_url.endswith("/gradio_api/call/v2/animate_scene")
+    assert generation_request.method == "POST"
+    assert json.loads(generation_request.data) == {
+        "input_video": {
+            "path": "/tmp/reference.mp4",
+            "orig_name": "reference.mp4",
+            "meta": {"_type": "gradio.FileData"},
+        },
+        "max_duration_s": 2,
+        "edited_frame": {
+            "path": "/tmp/character.png",
+            "orig_name": "character.png",
+            "meta": {"_type": "gradio.FileData"},
+        },
+        "rc_str": "Pose Retarget",
+        "resolution_choice": "Low Res",
+    }
+
+    stream_request, _ = capture.requests[3]
+    assert stream_request.full_url.endswith("/gradio_api/call/animate_scene/evt-123")
+    assert stream_request.headers["Authorization"] == "Bearer hf-secret"
+
+
+def test_sse_stream_ending_without_complete_event_is_rejected(monkeypatch):
+    capture = FakeRequestCapture(FakeHTTPResponse(b"event: heartbeat\ndata: null\n\n"))
+    monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", capture)
+    with pytest.raises(ZeroGPUError, match="ended without a complete event"):
+        ZeroGPUWanProvider()._stream_result("evt")
 
 
 def test_generated_local_filepath_is_accepted(tmp_path):
