@@ -23,8 +23,9 @@ def main():
     cap = cv2.VideoCapture(target_path)
     if not cap.isOpened(): raise SystemExit(f"Could not open target video: {target_path}")
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    if total_frames > 300:
-        raise SystemExit(f"FAIL: target video has {total_frames} frames, exceeds limit of 300. Trim the video to 10 seconds or less.")
+    MAX_FRAMES = 1800
+    if total_frames > MAX_FRAMES:
+        raise SystemExit(f"FAIL: target video has {total_frames} frames, exceeds limit of {MAX_FRAMES}. Trim the video to 60 seconds or less.")
     fps = cap.get(cv2.CAP_PROP_FPS)
     w, h = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     print(f"Total frames in target: {total_frames}", flush=True)
