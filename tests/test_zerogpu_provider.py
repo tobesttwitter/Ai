@@ -157,12 +157,13 @@ def test_full_two_file_flow_calls_upload_twice_then_submit_then_stream(monkeypat
     assert result[0]["mime_type"] == "video/mp4"
 
 
-def test_generated_remote_url_is_downloaded(monkeypatch, tmp_path):
-    provider = ZeroGPUWanProvider()
+def test_generated_remote_url_is_downloaded_without_forwarding_token(monkeypatch, tmp_path):
+    provider = ZeroGPUWanProvider(hf_token="hf-secret")
     download_dir = tmp_path / "downloads"
 
     def fake_urlopen(request, timeout=None):
         assert request.full_url == "https://example.test/result.mp4"
+        assert "Authorization" not in request.headers
         return FakeHTTPResponse(b"remote-mp4")
 
     monkeypatch.setattr("app.zerogpu.urllib.request.urlopen", fake_urlopen)
