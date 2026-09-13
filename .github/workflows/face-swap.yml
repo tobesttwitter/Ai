@@ -10,6 +10,10 @@ on:
         description: URL to target video
         required: false
         type: string
+      audio_url:
+        description: URL to audio file
+        required: false
+        type: string
   push:
     paths:
       - '.face-swap-trigger'
@@ -47,16 +51,14 @@ jobs:
         run: git clone --depth 1 https://github.com/instant-high/wav2lip-onnx.git /tmp/wav2lip-onnx
       - name: Download wav2lip model
         run: |
-          curl -fL -o /tmp/wav2lip_gan.onnx https://huggingface.co/bluefoxcreation/Wav2lip-Onnx/resolve/main/wav2lip_gan.onnx
-          ls -la /tmp/wav2lip_gan.onnx
+          curl -fL -o /tmp/wav2lip.onnx https://huggingface.co/bluefoxcreation/Wav2lip-Onnx/resolve/main/wav2lip.onnx
+          ls -la /tmp/wav2lip.onnx
       - name: Install lipsync dependencies
         run: python -m pip install -r requirements-lipsync.txt
-      - name: Generate test audio
+      - name: Download audio
         run: |
-          sudo apt-get install -y espeak-ng
-          espeak-ng -w audio.wav "This is a test of the lip sync system. The quick brown fox jumps over the lazy dog."
+          curl -fL "${{ inputs.audio_url || 'AUDIO_PLACEHOLDER' }}" -o audio.wav
           ls -la audio.wav
-          file audio.wav
       - name: Run lip sync
         run: python scripts/lip_sync.py output.mp4 audio.wav final.mp4
       - name: Upload final output
