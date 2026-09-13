@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import subprocess
 import tempfile
@@ -12,6 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from app.pipeline import MotionGenerationProvider
+
+
+logger = logging.getLogger(__name__)
 
 
 class ZeroGPUError(RuntimeError):
@@ -115,10 +119,9 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
                     f"detail={details}"
                 ) from exc
 
+            self.last_upload_field = field_name
             if field_name == "file":
-                self.last_upload_field = field_name
-            else:
-                self.last_upload_field = field_name
+                logger.warning("ZeroGPU upload succeeded using fallback multipart field name=%s", field_name)
             if not isinstance(payload, list) or not payload:
                 raise ZeroGPUError(
                     "ZeroGPU file upload failed: "
@@ -144,7 +147,7 @@ class ZeroGPUWanProvider(MotionGenerationProvider):
             f"detail={details}"
         )
 
-(self, video_file: dict[str, Any], image_file: dict[str, Any]) -> str:
+    def _post_generation(self, video_file: dict[str, Any], image_file: dict[str, Any]) -> str:
         # The live Gradio 6.14 OpenAPI schema exposes named request properties,
         # not the legacy {"data": [...]} wrapper used by older clients.
         payload = {
