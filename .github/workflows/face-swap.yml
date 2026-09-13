@@ -17,7 +17,7 @@ on:
 jobs:
   face-swap:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,8 +41,13 @@ jobs:
           ls -la source.jpg target.mp4
           file source.jpg
           file target.mp4
+      - name: Downscale target video for CPU processing
+        run: |
+          ffmpeg -y -i target.mp4 -vf "scale='min(640,iw)':-2" -c:v libx264 -preset ultrafast -crf 28 -an target_small.mp4
+          ls -la target_small.mp4
+          ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames,r_frame_rate,width,height -of default=noprint_wrappers=1 target_small.mp4
       - name: Run face swap
-        run: python scripts/face_swap.py source.jpg target.mp4 output.mp4
+        run: python scripts/face_swap.py source.jpg target_small.mp4 output.mp4
       - name: Clone wav2lip-onnx
         run: git clone --depth 1 https://github.com/instant-high/wav2lip-onnx.git /tmp/wav2lip-onnx
       - name: Download wav2lip model
