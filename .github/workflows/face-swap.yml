@@ -10,10 +10,6 @@ on:
         description: URL to target video
         required: false
         type: string
-      audio_url:
-        description: URL to audio WAV file
-        required: false
-        type: string
   push:
     paths:
       - '.face-swap-trigger'
