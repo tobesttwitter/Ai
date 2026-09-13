@@ -17,7 +17,7 @@ def _load_model():
     session_options = onnxruntime.SessionOptions()
     session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
     return onnxruntime.InferenceSession(
-        "/tmp/wav2lip_gan.onnx",
+        "/tmp/wav2lip.onnx",
         sess_options=session_options,
         providers=["CPUExecutionProvider"],
     )
