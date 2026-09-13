@@ -47,6 +47,8 @@ jobs:
           ls -la target_small.mp4
           ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames,r_frame_rate,width,height -of default=noprint_wrappers=1 target_small.mp4
       - name: Run face swap
+        env:
+          PYTHONUNBUFFERED: "1"
         run: python scripts/face_swap.py source.jpg target_small.mp4 output.mp4
       - name: Clone wav2lip-onnx
         run: git clone --depth 1 https://github.com/instant-high/wav2lip-onnx.git /tmp/wav2lip-onnx
@@ -61,6 +63,8 @@ jobs:
           curl -fL "${{ inputs.audio_url || 'https://upload.wikimedia.org/wikipedia/commons/5/52/Fr_The_Simpsons_Skateboarding.ogg?utm_source=fr.wikipedia.org&utm_campaign=index&utm_content=original' }}" -o audio.wav
           ls -la audio.wav
       - name: Run lip sync
+        env:
+          PYTHONUNBUFFERED: "1"
         run: python scripts/lip_sync.py output.mp4 audio.wav final.mp4
       - name: Upload final output
         uses: actions/upload-artifact@v4

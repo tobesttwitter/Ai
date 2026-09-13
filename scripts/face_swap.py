@@ -6,9 +6,9 @@ from insightface.app import FaceAnalysis
 
 def main():
     source_path, target_path, output_path = sys.argv[1], sys.argv[2], sys.argv[3]
-    print(f"Source: {source_path}")
-    print(f"Target: {target_path}")
-    print(f"Output: {output_path}")
+    print(f"Source: {source_path}", flush=True)
+    print(f"Target: {target_path}", flush=True)
+    print(f"Output: {output_path}", flush=True)
 
     app = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
     app.prepare(ctx_id=-1, det_size=(640, 640))
@@ -28,17 +28,28 @@ def main():
     cap = cv2.VideoCapture(target_path)
     if not cap.isOpened():
         raise SystemExit(f"Could not open target video: {target_path}")
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if total_frames > 300:
+        raise SystemExit(f"FAIL: target video has {total_frames} frames, exceeds limit of 300. Trim the video to 10 seconds or less.")
     fps = cap.get(cv2.CAP_PROP_FPS)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print(f"Total frames in target: {total_frames}", flush=True)
+    print(f"FPS: {fps}", flush=True)
+    print(f"Resolution: {w}x{h}", flush=True)
+    print("Starting frame processing...", flush=True)
     out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
 
     frame_count = 0
     frames_with_faces = 0
+    first_frame_logged = False
     while True:
         ret, frame = cap.read()
         if not ret:
             break
+        if not first_frame_logged:
+            print("First frame read OK", flush=True)
+            first_frame_logged = True
         faces = app.get(frame)
         if faces:
             frames_with_faces += 1
@@ -46,8 +57,8 @@ def main():
             frame = swapper.get(frame, face, src_face, paste_back=True)
         out.write(frame)
         frame_count += 1
-        if frame_count % 30 == 0:
-            print(f"Processed {frame_count} frames")
+        if frame_count % 10 == 0:
+            print(f"Processed {frame_count} frames", flush=True)
 
     cap.release()
     out.release()
@@ -57,7 +68,7 @@ def main():
     output_size = os.path.getsize(output_path)
     if output_size < 10000:
         raise SystemExit(f"FAIL: output file is under 10000 bytes: {output_size}")
-    print(f"Done: {output_path} ({frame_count} frames, {frames_with_faces} frames with faces, {output_size} bytes)")
+    print(f"Done: {output_path} ({frame_count} frames, {frames_with_faces} frames with faces, {output_size} bytes)", flush=True)
 
 if __name__ == '__main__':
     main()
